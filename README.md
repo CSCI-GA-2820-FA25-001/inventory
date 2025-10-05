@@ -3,31 +3,76 @@
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Python](https://img.shields.io/badge/Language-Python-blue.svg)](https://python.org/)
 
-This is a skeleton you can use to start your projects.
+## Installations and Setting Up
 
-**Note:** _Feel free to overwrite this `README.md` file with the one that describes your project._
+1. PostgresSQL
+
+Install Postgres.app: If you don't have it, download and install it from https://postgresapp.com. It's a free, self-contained application.
+
+Once installed, please open the application and press the "Start" button.
+
+2. `.env` file
+
+Please create a blank `.env` file in the root folder. Then, copy and paste the contents is `dot-env-sample` into the `.env` file. Please be sure to add this file to `.gitignore` since it does contain info that can't be pushed onto Github.
+
+3. Homebrew
+
+Please install homebrew from https://brew.sh/. Once Homebrew is installed, please run the following command:
+
+```
+brew install pipx
+pipx ensurepath
+```
+
+`pipx` is needed in orer to run and install `pipenv`
+
+## Virtual Environment
+
+1. Install `pipenv`
+
+```
+pipx install pipenv
+
+# Install production dependencies
+pipenv install flask gunicorn python-dotenv
+
+# Install development dependencies
+pipenv install --dev pylint pytest coverage black flake8
+```
+This will create two new files in your project directory:
+
+`Pipfile`: The replacement for pyproject.toml. It lists your project's dependencies.
+
+`Pipfile.lock`: The replacement for poetry.lock. It locks the specific versions of all dependencies for reproducible builds.
+
+2. Activating the Virtual Environment
+
+```
+pipenv shell
+```
+
+3. Other Necessary Commands
+
+```
+# Run the development server
+pipenv run flask run
+
+# Run your tests
+pipenv run pytest
+
+# Add a new production package
+pipenv install <package-name>
+
+# Add a new development package
+pipenv install --dev <package-name>
+
+# Remove a package
+pipenv uninstall <package-name>
+```
 
 ## Overview
 
 This project template contains starter code for your class project. The `/service` folder contains your `models.py` file for your model and a `routes.py` file for your service. The `/tests` folder has test case starter code for testing the model and the service separately. All you need to do is add your functionality. You can use the [lab-flask-tdd](https://github.com/nyu-devops/lab-flask-tdd) for code examples to copy from.
-
-## Automatic Setup
-
-The best way to use this repo is to start your own repo using it as a git template. To do this just press the green **Use this template** button in GitHub and this will become the source for your repository.
-
-## Manual Setup
-
-You can also clone this repository and then copy and paste the starter code into your project repo folder on your local computer. Be careful not to copy over your own `README.md` file so be selective in what you copy.
-
-There are 4 hidden files that you will need to copy manually if you use the Mac Finder or Windows Explorer to copy files from this folder into your repo folder.
-
-These should be copied using a bash shell as follows:
-
-```bash
-    cp .gitignore  ../<your_repo_folder>/
-    cp .flaskenv ../<your_repo_folder>/
-    cp .gitattributes ../<your_repo_folder>/
-```
 
 ## Contents
 
@@ -39,7 +84,6 @@ The project contains the following:
 .gitattributes      - File to gix Windows CRLF issues
 .devcontainers/     - Folder with support for VSCode Remote Containers
 dot-env-example     - copy to .env to use environment variables
-pyproject.toml      - Poetry list of Python libraries required by your code
 
 service/                   - service python package
 ├── __init__.py            - package initializer

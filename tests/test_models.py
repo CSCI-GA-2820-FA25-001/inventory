@@ -15,28 +15,26 @@
 ######################################################################
 
 """
-Test cases for Pet Model
+Test cases for Inventory Model
 """
-
 # pylint: disable=duplicate-code
 import os
 import logging
 from unittest import TestCase
 from wsgi import app
-from service.models import YourResourceModel, DataValidationError, db
-from .factories import YourResourceModelFactory
+from service.models import Inventory, Condition, DataValidationError, db
+from .factories import InventoryFactory
 
 DATABASE_URI = os.getenv(
     "DATABASE_URI", "postgresql+psycopg://postgres:postgres@localhost:5432/testdb"
 )
 
-
 ######################################################################
-#  YourResourceModel   M O D E L   T E S T   C A S E S
+#  I N V E N T O R Y   M O D E L   T E S T   C A S E S
 ######################################################################
 # pylint: disable=too-many-public-methods
-class TestYourResourceModel(TestCase):
-    """Test Cases for YourResourceModel Model"""
+class TestInventory(TestCase):
+    """Test Cases for Inventory Model"""
 
     @classmethod
     def setUpClass(cls):
@@ -54,7 +52,7 @@ class TestYourResourceModel(TestCase):
 
     def setUp(self):
         """This runs before each test"""
-        db.session.query(YourResourceModel).delete()  # clean up the last tests
+        db.session.query(Inventory).delete()  # clean up the last tests
         db.session.commit()
 
     def tearDown(self):
@@ -65,15 +63,27 @@ class TestYourResourceModel(TestCase):
     #  T E S T   C A S E S
     ######################################################################
 
-    def test_example_replace_this(self):
-        """It should create a YourResourceModel"""
-        # Todo: Remove this test case example
-        resource = YourResourceModelFactory()
-        resource.create()
-        self.assertIsNotNone(resource.id)
-        found = YourResourceModel.all()
-        self.assertEqual(len(found), 1)
-        data = YourResourceModel.find(resource.id)
-        self.assertEqual(data.name, resource.name)
+    def test_create_an_inventory_item(self):
+        """It should Create an inventory item and assert that it exists"""
+        item = Inventory(product_id=1, quantity=10, restock_level=5, condition=Condition.NEW)
+        self.assertEqual(str(item), "<Inventory for product id='1'>")
+        self.assertTrue(item is not None)
+        self.assertEqual(item.id, None)
+        self.assertEqual(item.product_id, 1)
+        self.assertEqual(item.quantity, 10)
+        self.assertEqual(item.restock_level, 5)
+        self.assertEqual(item.condition, Condition.NEW)
 
-    # Todo: Add your test cases here...
+    def test_add_an_inventory_item(self):
+        """It should Create an inventory item and add it to the database"""
+        inventory = Inventory.query.all()
+        self.assertEqual(inventory, [])
+        item = InventoryFactory()
+        item.create()
+        # Assert that it was assigned an id and shows up in the database
+        self.assertIsNotNone(item.id)
+        inventory = Inventory.query.all()
+        self.assertEqual(len(inventory), 1)
+
+    # Add more tests here... for Read, Update, Delete, List, Serialize, Deserialize etc.
+    # For now, these two are enough to validate the schema creation.
