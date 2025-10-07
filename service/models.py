@@ -1,10 +1,10 @@
 """
-Models for YourResourceModel
+Models for Inventory
 
 All of the models are stored in this module
 """
-
 import logging
+from enum import Enum
 from flask_sqlalchemy import SQLAlchemy
 
 logger = logging.getLogger("flask.app")
@@ -12,32 +12,39 @@ logger = logging.getLogger("flask.app")
 # Create the SQLAlchemy object to be initialized later in init_db()
 db = SQLAlchemy()
 
-
 class DataValidationError(Exception):
-    """Used for an data validation errors when deserializing"""
+    """Used for data validation errors when deserializing"""
 
+class Condition(Enum):
+    """Enumeration for the condition of an Inventory item"""
+    NEW = 1
+    USED = 2
+    OPEN_BOX = 3
 
-class YourResourceModel(db.Model):
+class Inventory(db.Model):
     """
-    Class that represents a YourResourceModel
+    Class that represents an Inventory item
     """
+    __tablename__ = "inventory"
 
     ##################################################
     # Table Schema
     ##################################################
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(63))
-
-    # Todo: Place the rest of your schema here...
+    product_id = db.Column(db.Integer, nullable=False)
+    quantity = db.Column(db.Integer, nullable=False, default=0)
+    restock_level = db.Column(db.Integer, nullable=False, default=0)
+    restock_amount = db.Column(db.Integer, nullable=False, default=0) # As per spec, no default but good practice
+    condition = db.Column(db.Enum(Condition), nullable=False, server_default=(Condition.NEW.name))
 
     def __repr__(self):
-        return f"<YourResourceModel {self.name} id=[{self.id}]>"
+        return f"<Inventory product_id={self.product_id} id=[{self.id}]>"
 
     def create(self):
         """
-        Creates a YourResourceModel to the database
+        Creates an Inventory item to the database
         """
-        logger.info("Creating %s", self.name)
+        logger.info("Creating inventory for product_id: %s", self.product_id)
         self.id = None  # pylint: disable=invalid-name
         try:
             db.session.add(self)
@@ -49,9 +56,9 @@ class YourResourceModel(db.Model):
 
     def update(self):
         """
-        Updates a YourResourceModel to the database
+        Updates an Inventory item in the database
         """
-        logger.info("Saving %s", self.name)
+        logger.info("Saving inventory for product_id: %s", self.product_id)
         try:
             db.session.commit()
         except Exception as e:
@@ -60,8 +67,8 @@ class YourResourceModel(db.Model):
             raise DataValidationError(e) from e
 
     def delete(self):
-        """Removes a YourResourceModel from the data store"""
-        logger.info("Deleting %s", self.name)
+        """Removes an Inventory item from the data store"""
+        logger.info("Deleting inventory for product_id: %s", self.product_id)
         try:
             db.session.delete(self)
             db.session.commit()
@@ -71,28 +78,37 @@ class YourResourceModel(db.Model):
             raise DataValidationError(e) from e
 
     def serialize(self):
-        """Serializes a YourResourceModel into a dictionary"""
-        return {"id": self.id, "name": self.name}
+        """Serializes an Inventory item into a dictionary"""
+        return {
+            "id": self.id,
+            "product_id": self.product_id,
+            "quantity": self.quantity,
+            "restock_level": self.restock_level,
+            "restock_amount": self.restock_amount,
+            "condition": self.condition.name  # Return the name of the enum
+        }
 
     def deserialize(self, data):
         """
-        Deserializes a YourResourceModel from a dictionary
+        Deserializes an Inventory item from a dictionary
 
         Args:
             data (dict): A dictionary containing the resource data
         """
         try:
-            self.name = data["name"]
+            self.product_id = data["product_id"]
+            self.quantity = data["quantity"]
+            self.restock_level = data["restock_level"]
+            self.restock_amount = data["restock_amount"]
+            # Look up the enum from the string
+            self.condition = getattr(Condition, data["condition"])
         except AttributeError as error:
             raise DataValidationError("Invalid attribute: " + error.args[0]) from error
         except KeyError as error:
-            raise DataValidationError(
-                "Invalid YourResourceModel: missing " + error.args[0]
-            ) from error
+            raise DataValidationError("Invalid Inventory: missing " + error.args[0]) from error
         except TypeError as error:
             raise DataValidationError(
-                "Invalid YourResourceModel: body of request contained bad or no data "
-                + str(error)
+                "Invalid Inventory: body of request contained bad or no data " + str(error)
             ) from error
         return self
 
@@ -102,22 +118,22 @@ class YourResourceModel(db.Model):
 
     @classmethod
     def all(cls):
-        """Returns all of the YourResourceModels in the database"""
-        logger.info("Processing all YourResourceModels")
+        """Returns all of the Inventory items in the database"""
+        logger.info("Processing all Inventory items")
         return cls.query.all()
 
     @classmethod
     def find(cls, by_id):
-        """Finds a YourResourceModel by it's ID"""
+        """Finds an Inventory item by its ID"""
         logger.info("Processing lookup for id %s ...", by_id)
         return cls.query.session.get(cls, by_id)
 
     @classmethod
-    def find_by_name(cls, name):
-        """Returns all YourResourceModels with the given name
+    def find_by_condition(cls, condition):
+        """Returns all Inventory items with the given condition
 
         Args:
-            name (string): the name of the YourResourceModels you want to match
+            condition (Condition): the condition of the Inventory items you want to match
         """
-        logger.info("Processing name query for %s ...", name)
-        return cls.query.filter(cls.name == name)
+        logger.info("Processing condition query for %s ...", condition)
+        return cls.query.filter(cls.condition == condition)
