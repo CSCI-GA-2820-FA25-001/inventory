@@ -15,28 +15,26 @@
 ######################################################################
 
 """
-Test cases for Pet Model
+Test cases for Inventory Model
 """
-
 # pylint: disable=duplicate-code
 import os
 import logging
 from unittest import TestCase
 from wsgi import app
-from service.models import YourResourceModel, DataValidationError, db
-from .factories import YourResourceModelFactory
+from service.models import Inventory, DataValidationError, db, Condition
+from .factories import InventoryFactory
 
 DATABASE_URI = os.getenv(
     "DATABASE_URI", "postgresql+psycopg://postgres:postgres@localhost:5432/testdb"
 )
 
-
 ######################################################################
-#  YourResourceModel   M O D E L   T E S T   C A S E S
+#  Inventory   M O D E L   T E S T   C A S E S
 ######################################################################
 # pylint: disable=too-many-public-methods
-class TestYourResourceModel(TestCase):
-    """Test Cases for YourResourceModel Model"""
+class TestInventoryModel(TestCase):
+    """Test Cases for Inventory Model"""
 
     @classmethod
     def setUpClass(cls):
@@ -54,7 +52,7 @@ class TestYourResourceModel(TestCase):
 
     def setUp(self):
         """This runs before each test"""
-        db.session.query(YourResourceModel).delete()  # clean up the last tests
+        db.session.query(Inventory).delete()  # clean up the last tests
         db.session.commit()
 
     def tearDown(self):
@@ -65,15 +63,66 @@ class TestYourResourceModel(TestCase):
     #  T E S T   C A S E S
     ######################################################################
 
-    def test_example_replace_this(self):
-        """It should create a YourResourceModel"""
-        # Todo: Remove this test case example
-        resource = YourResourceModelFactory()
-        resource.create()
-        self.assertIsNotNone(resource.id)
-        found = YourResourceModel.all()
+    def test_create_an_inventory_item(self):
+        """It should create an Inventory item and assert that it exists"""
+        item = InventoryFactory()
+        item.create()
+        self.assertIsNotNone(item.id)
+        found = Inventory.all()
         self.assertEqual(len(found), 1)
-        data = YourResourceModel.find(resource.id)
-        self.assertEqual(data.name, resource.name)
+        data = Inventory.find(item.id)
+        self.assertEqual(data.product_id, item.product_id)
+        self.assertEqual(data.quantity, item.quantity)
+        self.assertEqual(data.restock_level, item.restock_level)
+        self.assertEqual(data.restock_amount, item.restock_amount)
+        self.assertEqual(data.condition, item.condition)
 
-    # Todo: Add your test cases here...
+    def test_serialize_an_inventory_item(self):
+        """It should serialize an Inventory item"""
+        item = InventoryFactory()
+        data = item.serialize()
+        self.assertNotEqual(data, None)
+        self.assertIn("id", data)
+        self.assertEqual(data["id"], item.id)
+        self.assertIn("product_id", data)
+        self.assertEqual(data["product_id"], item.product_id)
+        self.assertIn("quantity", data)
+        self.assertEqual(data["quantity"], item.quantity)
+        self.assertIn("restock_level", data)
+        self.assertEqual(data["restock_level"], item.restock_level)
+        self.assertIn("restock_amount", data)
+        self.assertEqual(data["restock_amount"], item.restock_amount)
+        self.assertIn("condition", data)
+        self.assertEqual(data["condition"], item.condition.name)
+
+    def test_deserialize_an_inventory_item(self):
+        """It should deserialize an Inventory item"""
+        item = InventoryFactory()
+        item.create()
+        new_item = Inventory()
+        new_item.deserialize(item.serialize())
+        self.assertEqual(new_item.product_id, item.product_id)
+        self.assertEqual(new_item.quantity, item.quantity)
+        self.assertEqual(new_item.restock_level, item.restock_level)
+        self.assertEqual(new_item.restock_amount, item.restock_amount)
+        self.assertEqual(new_item.condition, item.condition)
+
+    def test_deserialize_with_missing_data(self):
+        """It should not deserialize an Inventory item with missing data"""
+        data = {"id": 1, "product_id": 123}
+        item = Inventory()
+        self.assertRaises(DataValidationError, item.deserialize, data)
+
+    def test_deserialize_with_bad_data(self):
+        """It should not deserialize an Inventory item with bad data"""
+        data = "this is not a dictionary"
+        item = Inventory()
+        self.assertRaises(DataValidationError, item.deserialize, data)
+
+    def test_deserialize_with_bad_condition(self):
+        """It should not deserialize an Inventory item with a bad condition"""
+        item = InventoryFactory()
+        data = item.serialize()
+        data["condition"] = "SOLD" # Invalid condition
+        new_item = Inventory()
+        self.assertRaises(DataValidationError, new_item.deserialize, data)
