@@ -1,20 +1,21 @@
 """
 Test Factory to make fake objects for testing
 """
-
+import random
 import factory
-from service.models import YourResourceModel
+from factory.fuzzy import FuzzyInteger
+from service.models import Inventory, Condition
 
-
-class YourResourceModelFactory(factory.Factory):
-    """Creates fake pets that you don't have to feed"""
+class InventoryFactory(factory.Factory):
+    """Creates fake inventory items"""
 
     class Meta:  # pylint: disable=too-few-public-methods
         """Maps factory to data model"""
-
-        model = YourResourceModel
+        model = Inventory
 
     id = factory.Sequence(lambda n: n)
-    name = factory.Faker("first_name")
-
-    # Todo: Add your other attributes here...
+    product_id = factory.Sequence(lambda n: n + 1000) # Ensure unique product IDs
+    quantity = FuzzyInteger(0, 50)
+    restock_level = FuzzyInteger(5, 15)
+    restock_amount = FuzzyInteger(20, 30)
+    condition = factory.LazyFunction(lambda: random.choice(list(Condition)))
