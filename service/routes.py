@@ -44,3 +44,23 @@ def index():
 ######################################################################
 
 # Todo: Place your REST API code here ...
+
+######################################################################
+# READ AN INVENTORY ITEM
+######################################################################
+@app.route("/inventory/<int:item_id>", methods=["GET"])
+def get_inventory_item(item_id):
+    """
+    Retrieve a single Inventory Item
+
+    This endpoint will return an Inventory Item based on its id
+    """
+    app.logger.info("Request to Retrieve an inventory item with id [%s]", item_id)
+
+    # Attempt to find the Inventory Item and abort if not found
+    item = Inventory.find(item_id)
+    if not item:
+        abort(status.HTTP_404_NOT_FOUND, f"Inventory item with id '{item_id}' was not found.")
+
+    app.logger.info("Returning inventory item: %s", item.name)
+    return jsonify(item.serialize()), status.HTTP_200_OK
