@@ -77,6 +77,22 @@ class TestInventoryModel(TestCase):
         self.assertEqual(data.restock_amount, item.restock_amount)
         self.assertEqual(data.condition, item.condition)
 
+    def test_read_an_inventory_item(self):
+        """It should Read an Inventory Item"""
+        item = InventoryFactory()
+        logging.debug(item)
+        item.id = None
+        item.create()
+        self.assertIsNotNone(item.id)
+        # Fetch it back
+        found_item = Inventory.find(item.id)
+        self.assertEqual(found_item.id, item.id)
+        self.assertEqual(found_item.product_id, item.product_id)
+        self.assertEqual(found_item.quantity, item.quantity)
+        self.assertEqual(found_item.restock_level, item.restock_level)
+        self.assertEqual(found_item.restock_amount, item.restock_amount)
+        self.assertEqual(found_item.condition, item.condition)
+
     def test_serialize_an_inventory_item(self):
         """It should serialize an Inventory item"""
         item = InventoryFactory()
