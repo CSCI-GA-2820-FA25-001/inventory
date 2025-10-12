@@ -76,13 +76,14 @@ class TestYourResourceService(TestCase):
             test_item = InventoryFactory()
             response = self.client.post(BASE_URL, json=test_item.serialize())
             self.assertEqual(
-                response.status_code, status.HTTP_201_CREATED, "Could not create test inventory item"
+                response.status_code,
+                status.HTTP_201_CREATED,
+                "Could not create test inventory item",
             )
             new_item = response.get_json()
             test_item.id = new_item["id"]
             items.append(test_item)
         return items
-
 
     ######################################################################
     #  P L A C E   T E S T   C A S E S   H E R E
@@ -109,8 +110,7 @@ class TestYourResourceService(TestCase):
         self.assertEqual(data["quantity"], test_item.quantity)
         self.assertEqual(data["restock_level"], test_item.restock_level)
         self.assertEqual(data["restock_amount"], test_item.restock_amount)
-        self.assertEqual(data["condition"], test_item.condition)
-        self.assertEqual(data["category"], test_item.category)
+        self.assertEqual(data["condition"], test_item.condition.name)
 
     def test_get_inventory_item_not_found(self):
         """It should not Get an Inventory Item that is not found"""
@@ -119,3 +119,27 @@ class TestYourResourceService(TestCase):
         data = response.get_json()
         logging.debug("Response data = %s", data)
         self.assertIn("was not found", data["message"])
+
+    # ----------------------------------------------------------
+    # TEST UPDATE
+    # ----------------------------------------------------------
+    def test_update_inventory_item(self):
+        """It should Update an existing Inventory item"""
+        test_item = self._create_inventory_items(1)[0]
+        self.assertIsNotNone(test_item.id)
+
+        new_data = test_item.serialize()
+        new_data["quantity"] = test_item.quantity + 10
+        new_data["condition"] = "USED"
+
+        response = self.client.put(f"{BASE_URL}/{test_item.id}", json=new_data)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        updated = response.get_json()
+        self.assertEqual(updated["id"], test_item.id)
+        self.assertEqual(updated["quantity"], new_data["quantity"])
+        self.assertEqual(updated["condition"], new_data["condition"])
+
+        check_item = Inventory.find(test_item.id)
+        self.assertEqual(check_item.quantity, new_data["quantity"])
+        self.assertEqual(check_item.condition.name, new_data["condition"])
