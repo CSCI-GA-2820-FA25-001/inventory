@@ -3,6 +3,7 @@ Models for Inventory
 
 All of the models are stored in this module
 """
+
 import logging
 from enum import Enum
 from flask_sqlalchemy import SQLAlchemy
@@ -12,19 +13,24 @@ logger = logging.getLogger("flask.app")
 # Create the SQLAlchemy object to be initialized later in init_db()
 db = SQLAlchemy()
 
+
 class DataValidationError(Exception):
     """Used for data validation errors when deserializing"""
 
+
 class Condition(Enum):
     """Enumeration for the condition of an Inventory item"""
+
     NEW = 1
     USED = 2
     OPEN_BOX = 3
+
 
 class Inventory(db.Model):
     """
     Class that represents an Inventory item
     """
+
     __tablename__ = "inventory"
 
     ##################################################
@@ -34,8 +40,12 @@ class Inventory(db.Model):
     product_id = db.Column(db.Integer, nullable=False)
     quantity = db.Column(db.Integer, nullable=False, default=0)
     restock_level = db.Column(db.Integer, nullable=False, default=0)
-    restock_amount = db.Column(db.Integer, nullable=False, default=0) # As per spec, no default but good practice
-    condition = db.Column(db.Enum(Condition), nullable=False, server_default=(Condition.NEW.name))
+    restock_amount = db.Column(
+        db.Integer, nullable=False, default=0
+    )  # As per spec, no default but good practice
+    condition = db.Column(
+        db.Enum(Condition), nullable=False, server_default=(Condition.NEW.name)
+    )
 
     def __repr__(self):
         return f"<Inventory product_id={self.product_id} id=[{self.id}]>"
@@ -59,6 +69,7 @@ class Inventory(db.Model):
         Updates an Inventory item in the database
         """
         logger.info("Saving inventory for product_id: %s", self.product_id)
+
         try:
             db.session.commit()
         except Exception as e:
@@ -85,7 +96,7 @@ class Inventory(db.Model):
             "quantity": self.quantity,
             "restock_level": self.restock_level,
             "restock_amount": self.restock_amount,
-            "condition": self.condition.name  # Return the name of the enum
+            "condition": self.condition.name,  # Return the name of the enum
         }
 
     def deserialize(self, data):
@@ -105,10 +116,13 @@ class Inventory(db.Model):
         except AttributeError as error:
             raise DataValidationError("Invalid attribute: " + error.args[0]) from error
         except KeyError as error:
-            raise DataValidationError("Invalid Inventory: missing " + error.args[0]) from error
+            raise DataValidationError(
+                "Invalid Inventory: missing " + error.args[0]
+            ) from error
         except TypeError as error:
             raise DataValidationError(
-                "Invalid Inventory: body of request contained bad or no data " + str(error)
+                "Invalid Inventory: body of request contained bad or no data "
+                + str(error)
             ) from error
         return self
 

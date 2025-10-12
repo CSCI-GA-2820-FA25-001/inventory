@@ -45,6 +45,37 @@ def index():
 
 # Todo: Place your REST API code here ...
 
+
+######################################################################
+# CREATE AN INVENTORY ITEM
+# created by Jason, should be replaced by @Sichen Zhong's code
+######################################################################
+@app.route("/inventory", methods=["POST"])
+def create_inventory():
+    """
+    Creates an Inventory item
+    This endpoint will create an Inventory item based on the posted data
+    """
+    app.logger.info("Request to create an Inventory item")
+    data = request.get_json()
+
+    try:
+        item = Inventory()
+        item.deserialize(data)
+        item.create()
+    except Exception as e:
+        app.logger.error("Error creating inventory: %s", str(e))
+        abort(status.HTTP_400_BAD_REQUEST, f"Invalid data: {str(e)}")
+
+    location_url = url_for("get_inventory_item", item_id=item.id, _external=False)
+    app.logger.info("Inventory item with ID [%s] created.", item.id)
+    return (
+        jsonify(item.serialize()),
+        status.HTTP_201_CREATED,
+        {"Location": location_url},
+    )
+
+
 ######################################################################
 # READ AN INVENTORY ITEM
 ######################################################################
@@ -60,7 +91,47 @@ def get_inventory_item(item_id):
     # Attempt to find the Inventory Item and abort if not found
     item = Inventory.find(item_id)
     if not item:
-        abort(status.HTTP_404_NOT_FOUND, f"Inventory item with id '{item_id}' was not found.")
+        abort(
+            status.HTTP_404_NOT_FOUND,
+            f"Inventory item with id '{item_id}' was not found.",
+        )
 
-    app.logger.info("Returning inventory item: %s", item.name)
+    app.logger.info("Returning inventory item: %s", item.product_id)
+    return jsonify(item.serialize()), status.HTTP_200_OK
+
+
+######################################################################
+# UPDATE AN EXISTING INVENTORY ITEM
+######################################################################
+@app.route("/inventory/<int:item_id>", methods=["PUT"])
+def update_inventory_item(item_id):
+    """
+    Update an existing Inventory item
+    This endpoint will update an Inventory item based on the posted data
+    """
+    app.logger.info("Request to update Inventory item with id [%s]", item_id)
+
+    if not request.is_json:
+        abort(
+            status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            "Content-Type must be application/json",
+        )
+
+    data = request.get_json()
+
+    item = Inventory.find(item_id)
+    if not item:
+        abort(
+            status.HTTP_404_NOT_FOUND,
+            f"Inventory item with id '{item_id}' was not found.",
+        )
+
+    try:
+        item.deserialize(data)
+        item.id = item_id
+        item.update()
+    except Exception as e:
+        app.logger.error("Error updating inventory: %s", str(e))
+        abort(status.HTTP_400_BAD_REQUEST, f"Invalid data: {str(e)}")
+
     return jsonify(item.serialize()), status.HTTP_200_OK

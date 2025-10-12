@@ -29,6 +29,7 @@ DATABASE_URI = os.getenv(
     "DATABASE_URI", "postgresql+psycopg://postgres:postgres@localhost:5432/testdb"
 )
 
+
 ######################################################################
 #  Inventory   M O D E L   T E S T   C A S E S
 ######################################################################
@@ -93,6 +94,25 @@ class TestInventoryModel(TestCase):
         self.assertEqual(found_item.restock_amount, item.restock_amount)
         self.assertEqual(found_item.condition, item.condition)
 
+    def test_update_an_inventory_item(self):
+        """It should update an Inventory item in the database"""
+        item = InventoryFactory()
+        item.create()
+        self.assertIsNotNone(item.id)
+
+        old_quantity = item.quantity
+        old_condition = item.condition
+
+        item.quantity = old_quantity + 10
+        item.condition = Condition.USED
+
+        item.update()
+
+        updated = Inventory.find(item.id)
+        self.assertEqual(updated.quantity, old_quantity + 10)
+        self.assertEqual(updated.condition, Condition.USED)
+        self.assertNotEqual(updated.condition, old_condition)
+
     def test_serialize_an_inventory_item(self):
         """It should serialize an Inventory item"""
         item = InventoryFactory()
@@ -139,6 +159,6 @@ class TestInventoryModel(TestCase):
         """It should not deserialize an Inventory item with a bad condition"""
         item = InventoryFactory()
         data = item.serialize()
-        data["condition"] = "SOLD" # Invalid condition
+        data["condition"] = "SOLD"  # Invalid condition
         new_item = Inventory()
         self.assertRaises(DataValidationError, new_item.deserialize, data)
