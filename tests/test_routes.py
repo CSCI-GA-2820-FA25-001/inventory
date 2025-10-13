@@ -143,3 +143,14 @@ class TestYourResourceService(TestCase):
         check_item = Inventory.find(test_item.id)
         self.assertEqual(check_item.quantity, new_data["quantity"])
         self.assertEqual(check_item.condition.name, new_data["condition"])
+
+    # ----------------------------------------------------------
+    # TEST LIST
+    # ----------------------------------------------------------
+    def test_get_inventory_list(self):
+        """It should Get a list of Inventory item"""
+        self._create_inventory_items(5)
+        response = self.client.get(BASE_URL)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.get_json()
+        self.assertEqual(len(data), 5)
