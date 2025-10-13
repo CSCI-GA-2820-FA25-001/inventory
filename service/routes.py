@@ -141,36 +141,39 @@ def update_inventory_item(item_id):
 # LIST ALL INVENTORY ITEMS
 ######################################################################
 @app.route("/inventory", methods=["GET"])
-def list_inventory_items():
+def list_inventory_item():
     """Returns all of the Inventory Items"""
+
     app.logger.info("Request for inventory list")
 
-    items = []
+    # items = []
 
-    # Parse any arguments from the query string
-    category = request.args.get("category")
-    name = request.args.get("name")
-    available = request.args.get("available")
-    gender = request.args.get("gender")
+    # # Parse any arguments from the query string
+    # category = request.args.get("category")
+    # name = request.args.get("name")
+    # available = request.args.get("available")
+    # gender = request.args.get("gender")
 
-    if category:
-        app.logger.info("Find by category: %s", category)
-        items = Inventory.find_by_category(category)
-    elif name:
-        app.logger.info("Find by name: %s", name)
-        items = Inventory.find_by_name(name)
-    elif available:
-        app.logger.info("Find by available: %s", available)
-        # create bool from string
-        available_value = available.lower() in ["true", "yes", "1"]
-        items = Inventory.find_by_availability(available_value)
-    elif gender:
-        app.logger.info("Find by gender: %s", gender)
-        # create enum from string
-        items = Inventory.find_by_gender(gender[gender.upper()])
-    else:
-        app.logger.info("Find all")
-        items = Inventory.all()
+    # if category:
+    #     app.logger.info("Find by category: %s", category)
+    #     items = Inventory.find_by_category(category)
+    # elif name:
+    #     app.logger.info("Find by name: %s", name)
+    #     items = Inventory.find_by_name(name)
+    # elif available:
+    #     app.logger.info("Find by available: %s", available)
+    #     # create bool from string
+    #     available_value = available.lower() in ["true", "yes", "1"]
+    #     items = Inventory.find_by_availability(available_value)
+    # elif gender:
+    #     app.logger.info("Find by gender: %s", gender)
+    #     # create enum from string
+    #     items = Inventory.find_by_gender(gender[gender.upper()])
+    # else:
+    #     app.logger.info("Find all")
+    #     items = Inventory.all()
+
+    items = Inventory.all()
 
     results = [item.serialize() for item in items]
     app.logger.info("Returning %d inventory items", len(results))
