@@ -107,7 +107,6 @@ Reminder: return some useful information in json format about the service here
     "quantity": 25,
     "restock_level": 10,
     "restock_amount": 5,
-    "condition": "NEW"
   },
   {
     "id": 2,
@@ -115,7 +114,6 @@ Reminder: return some useful information in json format about the service here
     "quantity": 5,
     "restock_level": 20,
     "restock_amount": 10,
-    "condition": "USED"
   }
 ]
 ```
@@ -132,7 +130,6 @@ Reminder: return some useful information in json format about the service here
   "quantity": 40,
   "restock_level": 10,
   "restock_amount": 5,
-  "condition": "OPEN_BOX"
 }
 ```
 
@@ -145,7 +142,6 @@ Reminder: return some useful information in json format about the service here
   "quantity": 40,
   "restock_level": 10,
   "restock_amount": 5,
-  "condition": "OPEN_BOX"
 }
 ```
 
@@ -164,7 +160,6 @@ Reminder: return some useful information in json format about the service here
   "quantity": 40,
   "restock_level": 10,
   "restock_amount": 5,
-  "condition": "OPEN_BOX"
 }
 ```
 
@@ -181,7 +176,6 @@ Error: `404 Not Found` — when record doesn’t exist.
   "quantity": 60,
   "restock_level": 15,
   "restock_amount": 10,
-  "condition": "OPEN_BOX"
 }
 ```
 
@@ -194,7 +188,6 @@ Error: `404 Not Found` — when record doesn’t exist.
   "quantity": 60,
   "restock_level": 15,
   "restock_amount": 10,
-  "condition": "OPEN_BOX"
 }
 ```
 
@@ -223,12 +216,12 @@ curl http://localhost:8080/inventory/1
 # Create
 curl -X POST http://localhost:8080/inventory \
      -H "Content-Type: application/json" \
-     -d '{"product_id":3005,"quantity":40,"restock_level":10,"restock_amount":5,"condition":"OPEN_BOX"}'
+     -d '{"product_id":3005,"quantity":40,"restock_level":10,"restock_amount":5}'
 
 # Update
 curl -X PUT http://localhost:8080/inventory/1 \
      -H "Content-Type: application/json" \
-     -d '{"quantity":60,"restock_level":15,"restock_amount":10,"condition":"OPEN_BOX"}'
+     -d '{"quantity":60,"restock_level":15,"restock_amount":10}'
 
 # Delete
 curl -X DELETE http://localhost:8080/inventory/1
