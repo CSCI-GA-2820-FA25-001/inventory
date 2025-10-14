@@ -10,7 +10,7 @@ A RESTful microservice for managing **product inventory** for an eCommerce platf
 
 ## 📘 Overview
 
-The **Inventory Service** keeps track of how many units of each product exist in the warehouse, their condition, and restock levels.
+The **Inventory Service** keeps track of how many units of each product exist in the warehouse, and restock levels.
 It supports full **CRUD + LIST** operations and returns JSON-only responses, following RESTful conventions and **Test-Driven Development (TDD)** practices with **95%+ code coverage**.
 
 ---
@@ -22,7 +22,6 @@ It supports full **CRUD + LIST** operations and returns JSON-only responses, fol
 * **Update** product quantity, restock level, or restock amount
 * **Delete** an inventory record
 * **List** all inventory items
-* Query by condition (`NEW`, `USED`, `OPEN_BOX`)
 * Health check via root `/` route
 
 ---
@@ -77,7 +76,7 @@ The service starts at **[http://localhost:8080/](http://localhost:8080/)**
 | `quantity`       | Integer | Current quantity in stock                     |
 | `restock_level`  | Integer | Threshold for reordering                      |
 | `restock_amount` | Integer | Amount to restock when threshold is reached   |
-| `condition`      | String  | Condition of item (`NEW`, `USED`, `OPEN_BOX`) |
+
 
 ---
 
@@ -91,6 +90,16 @@ The service starts at **[http://localhost:8080/](http://localhost:8080/)**
 
 ```
 Reminder: return some useful information in json format about the service here
+```
+
+```json
+[
+  {
+    "name": "Inventory REST API Service",
+    "version": "1.0",
+    "paths": "http://localhost:8080/inventory"
+  }
+]
 ```
 
 ---
