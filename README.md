@@ -19,10 +19,10 @@ It supports full **CRUD + LIST** operations and returns JSON-only responses, fol
 
 * **Create** a new inventory record
 * **Read** details of a single product’s inventory
-* **Update** product quantity or restock level
-* **Delete** an inventory record
+* **Update** product quantity, restock level, or restock amount
+* **Delete** an inventory record (endpoint not implemented yet)
 * **List** all inventory items
-* Query by condition (`new`, `used`, `open_box`)
+* Query by condition (`NEW`, `USED`, `OPEN_BOX`)
 * Health check via root `/` route
 
 ---
@@ -70,13 +70,14 @@ The service starts at **[http://localhost:8080/](http://localhost:8080/)**
 
 ## 🧾 Data Model
 
-| Field           | Type    | Description                                   |
-| --------------- | ------- | --------------------------------------------- |
-| `id`            | Integer | Auto-generated unique identifier              |
-| `product_id`    | String  | Product SKU or ID                             |
-| `quantity`      | Integer | Current quantity in stock                     |
-| `restock_level` | Integer | Threshold for reordering                      |
-| `condition`     | String  | Condition of item (`new`, `used`, `open_box`) |
+| Field            | Type    | Description                                   |
+| ---------------- | ------- | --------------------------------------------- |
+| `id`             | Integer | Auto-generated unique identifier              |
+| `product_id`     | Integer | Product ID                                    |
+| `quantity`       | Integer | Current quantity in stock                     |
+| `restock_level`  | Integer | Threshold for reordering                      |
+| `restock_amount` | Integer | Amount to restock when threshold is reached   |
+| `condition`      | String  | Condition of item (`NEW`, `USED`, `OPEN_BOX`) |
 
 ---
 
@@ -86,16 +87,13 @@ The service starts at **[http://localhost:8080/](http://localhost:8080/)**
 
 ### Root — `GET /`
 
-Returns service metadata.
+Returns a plain text reminder message.
 
-```json
-{
-  "name": "Inventory Service",
-  "version": "v1.0.0",
-  "description": "Tracks product quantities, restock levels, and item conditions.",
-  "list_url": "/inventory"
-}
 ```
+Reminder: return some useful information in json format about the service here
+```
+
+**Response 200**
 
 ---
 
@@ -107,17 +105,19 @@ Returns service metadata.
 [
   {
     "id": 1,
-    "product_id": "P1001",
+    "product_id": 1001,
     "quantity": 25,
     "restock_level": 10,
-    "condition": "new"
+    "restock_amount": 5,
+    "condition": "NEW"
   },
   {
     "id": 2,
-    "product_id": "P1002",
+    "product_id": 1002,
     "quantity": 5,
     "restock_level": 20,
-    "condition": "used"
+    "restock_amount": 10,
+    "condition": "USED"
   }
 ]
 ```
@@ -130,10 +130,11 @@ Returns service metadata.
 
 ```json
 {
-  "product_id": "P3005",
+  "product_id": 3005,
   "quantity": 40,
   "restock_level": 10,
-  "condition": "open_box"
+  "restock_amount": 5,
+  "condition": "OPEN_BOX"
 }
 ```
 
@@ -142,12 +143,15 @@ Returns service metadata.
 ```json
 {
   "id": 3,
-  "product_id": "P3005",
+  "product_id": 3005,
   "quantity": 40,
   "restock_level": 10,
-  "condition": "open_box"
+  "restock_amount": 5,
+  "condition": "OPEN_BOX"
 }
 ```
+
+*Includes `Location` header with URL of the newly created resource.*
 
 ---
 
@@ -158,10 +162,11 @@ Returns service metadata.
 ```json
 {
   "id": 3,
-  "product_id": "P3005",
+  "product_id": 3005,
   "quantity": 40,
   "restock_level": 10,
-  "condition": "open_box"
+  "restock_amount": 5,
+  "condition": "OPEN_BOX"
 }
 ```
 
@@ -176,7 +181,9 @@ Error: `404 Not Found` — when record doesn’t exist.
 ```json
 {
   "quantity": 60,
-  "restock_level": 15
+  "restock_level": 15,
+  "restock_amount": 10,
+  "condition": "OPEN_BOX"
 }
 ```
 
@@ -185,10 +192,11 @@ Error: `404 Not Found` — when record doesn’t exist.
 ```json
 {
   "id": 3,
-  "product_id": "P3005",
+  "product_id": 3005,
   "quantity": 60,
   "restock_level": 15,
-  "condition": "open_box"
+  "restock_amount": 10,
+  "condition": "OPEN_BOX"
 }
 ```
 
@@ -205,10 +213,8 @@ Error: `404 Not Found` — when record doesn’t exist.
 ## ⚡ Example CURL Commands
 
 ```bash
-# Create
-curl -X POST http://localhost:8080/inventory \
-     -H "Content-Type: application/json" \
-     -d '{"product_id":"P200","quantity":50,"restock_level":10,"condition":"new"}'
+# Root
+curl http://localhost:8080/
 
 # List all
 curl http://localhost:8080/inventory
@@ -216,10 +222,15 @@ curl http://localhost:8080/inventory
 # Get one
 curl http://localhost:8080/inventory/1
 
+# Create
+curl -X POST http://localhost:8080/inventory \
+     -H "Content-Type: application/json" \
+     -d '{"product_id":3005,"quantity":40,"restock_level":10,"restock_amount":5,"condition":"OPEN_BOX"}'
+
 # Update
 curl -X PUT http://localhost:8080/inventory/1 \
      -H "Content-Type: application/json" \
-     -d '{"quantity":80,"restock_level":20}'
+     -d '{"quantity":60,"restock_level":15,"restock_amount":10,"condition":"OPEN_BOX"}'
 
 # Delete
 curl -X DELETE http://localhost:8080/inventory/1
