@@ -20,6 +20,7 @@ Test cases for Inventory Model
 # pylint: disable=duplicate-code
 import os
 import logging
+from service.models import Inventory, DataValidationError
 from unittest import TestCase
 from wsgi import app
 from service.models import Inventory, DataValidationError, db, Condition
@@ -64,6 +65,9 @@ class TestInventoryModel(TestCase):
     #  T E S T   C A S E S
     ######################################################################
 
+    # ----------------------------------------------------------
+    # TEST CREATE
+    # ----------------------------------------------------------
     def test_create_an_inventory_item(self):
         """It should create an Inventory item and assert that it exists"""
         item = InventoryFactory()
@@ -78,6 +82,9 @@ class TestInventoryModel(TestCase):
         self.assertEqual(data.restock_amount, item.restock_amount)
         self.assertEqual(data.condition, item.condition)
 
+    # ----------------------------------------------------------
+    # TEST READ
+    # ----------------------------------------------------------
     def test_read_an_inventory_item(self):
         """It should Read an Inventory Item"""
         item = InventoryFactory()
@@ -94,9 +101,12 @@ class TestInventoryModel(TestCase):
         self.assertEqual(found_item.restock_amount, item.restock_amount)
         self.assertEqual(found_item.condition, item.condition)
 
+    # ----------------------------------------------------------
+    # TEST UPDATE
+    # ----------------------------------------------------------
     def test_update_an_inventory_item(self):
         """It should update an Inventory item in the database"""
-        item = InventoryFactory()
+        item = InventoryFactory(condition=Condition.NEW)
         item.create()
         self.assertIsNotNone(item.id)
 
@@ -113,6 +123,19 @@ class TestInventoryModel(TestCase):
         self.assertEqual(updated.condition, Condition.USED)
         self.assertNotEqual(updated.condition, old_condition)
 
+    def test_update_inventory_item_with_error(self):
+        """It should raise DataValidationError when update() fails"""
+
+        item = Inventory(
+            product_id=1, quantity=1, restock_level=1, restock_amount=1, condition="BAD"
+        )  # not Enum
+        db.session.add(item)
+        with self.assertRaises(DataValidationError):
+            item.update()
+
+    # ----------------------------------------------------------
+    # TEST MISC
+    # ----------------------------------------------------------
     def test_serialize_an_inventory_item(self):
         """It should serialize an Inventory item"""
         item = InventoryFactory()
