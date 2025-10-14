@@ -120,6 +120,20 @@ class TestYourResourceService(TestCase):
         logging.debug("Response data = %s", data)
         self.assertIn("was not found", data["message"])
 
+    def test_create_inventory_conflict(self):
+        """It should not allow creating a duplicate inventory item (409 Conflict)"""
+        # Create an initial item
+        test_item = self._create_inventory_items(1)[0]
+
+        # Try creating another item with the same product_id
+        duplicate_data = test_item.serialize()
+        duplicate_data["id"] = None  # remove id for creation
+
+        response = self.client.post(BASE_URL, json=duplicate_data)
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        data = response.get_json()
+        self.assertIn("already exists", data["message"])
+
     # ----------------------------------------------------------
     # TEST UPDATE
     # ----------------------------------------------------------

@@ -59,13 +59,19 @@ def create_inventory():
     app.logger.info("Request to create an Inventory item")
     data = request.get_json()
 
-    try:
-        item = Inventory()
-        item.deserialize(data)
-        item.create()
-    except Exception as e:
-        app.logger.error("Error creating inventory: %s", str(e))
-        abort(status.HTTP_400_BAD_REQUEST, f"Invalid data: {str(e)}")
+    item = Inventory()
+    item.deserialize(data)
+
+    # Check for duplicate product_id
+    existing_item = Inventory.query.filter_by(product_id=item.product_id).first()
+    if existing_item:
+        app.logger.warning("Duplicate product_id [%s] found", item.product_id)
+        abort(
+            status.HTTP_409_CONFLICT,
+            f"Inventory item with product_id '{item.product_id}' already exists.",
+        )
+
+    item.create()
 
     location_url = url_for("get_inventory_item", item_id=item.id, _external=False)
     app.logger.info("Inventory item with ID [%s] created.", item.id)
