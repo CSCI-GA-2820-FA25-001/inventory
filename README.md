@@ -1,90 +1,279 @@
-# NYU DevOps Project Template
+# 🏪 NYU DevOps Project — Inventory Service
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Python](https://img.shields.io/badge/Language-Python-blue.svg)](https://python.org/)
+[![Tests](https://img.shields.io/badge/Coverage-95%25%2B-brightgreen.svg)](https://pytest.org/)
 
-## Installations and Setting Up
+A RESTful microservice for managing **product inventory** for an eCommerce platform, developed by the **Inventory Squad** for NYU’s **CSCI-GA-2820-001 DevOps and Agile Methodologies (Fall 2025)**.
 
-1. PostgresSQL
+---
 
-Install Postgres.app: If you don't have it, download and install it from https://postgresapp.com. It's a free, self-contained application.
+## 📘 Overview
 
-Once installed, please open the application and press the "Start" button.
+The **Inventory Service** keeps track of how many units of each product exist in the warehouse, their condition, and restock levels.
+It supports full **CRUD + LIST** operations and returns JSON-only responses, following RESTful conventions and **Test-Driven Development (TDD)** practices with **95%+ code coverage**.
 
-2. `.env` file
+---
 
-Please create a blank `.env` file in the root folder. Then, copy and paste the contents is `dot-env-sample` into the `.env` file. Please be sure to add this file to `.gitignore` since it does contain info that can't be pushed onto Github.
+## 🧩 Features
 
-3. Homebrew
+* **Create** a new inventory record
+* **Read** details of a single product’s inventory
+* **Update** product quantity or restock level
+* **Delete** an inventory record
+* **List** all inventory items
+* Query by condition (`new`, `used`, `open_box`)
+* Health check via root `/` route
 
-Please install homebrew from https://brew.sh/. Once Homebrew is installed, please run the following command:
+---
 
-```
-brew install pipx
-pipx ensurepath
-```
+## 🧱 Technology Stack
 
-`pipx` is needed in orer to run and install `pipenv`
+* **Python 3.11+**
+* **Flask** — Web micro-framework
+* **PostgreSQL** — Database
+* **SQLAlchemy** — ORM for persistence
+* **pytest / pytest-cov** — Testing & coverage
+* **Docker + VSCode Dev Containers** — Local environment
 
-## Virtual Environment
+---
 
-1. Install `pipenv`
+## ⚙️ Setup and Installation
 
-```
-pipx install pipenv
+### Prerequisites
 
-# Install production dependencies
-pipenv install flask gunicorn python-dotenv
+* Docker Desktop
+* Visual Studio Code (with Remote Containers extension)
 
-# Install development dependencies
-pipenv install --dev pylint pytest coverage black flake8
-```
-This will create two new files in your project directory:
+### Steps
 
-`Pipfile`: The replacement for pyproject.toml. It lists your project's dependencies.
-
-`Pipfile.lock`: The replacement for poetry.lock. It locks the specific versions of all dependencies for reproducible builds.
-
-2. Activating the Virtual Environment
-
-```
-pipenv shell
-```
-
-3. Other Necessary Commands
-
-```
-# Run the development server
-pipenv run flask run
-
-# Run your tests
-pipenv run pytest
-
-# Add a new production package
-pipenv install <package-name>
-
-# Add a new development package
-pipenv install --dev <package-name>
-
-# Remove a package
-pipenv uninstall <package-name>
-```
-
-## Testing
-
-To test each API endpoint that you implement, please do the following:
-
-```
+```bash
+# Clone this repository
+git clone https://github.com/nyu-devops-fa25/inventory.git
 cd inventory
-make test
+
+# Open in VSCode and choose "Reopen in Container"
+code .
+
+# Wait for the container to finish building
 ```
 
+### Initialize Database
 
-## Overview
+```bash
+flask run
+```
 
-This project template contains starter code for your class project. The `/service` folder contains your `models.py` file for your model and a `routes.py` file for your service. The `/tests` folder has test case starter code for testing the model and the service separately. All you need to do is add your functionality. You can use the [lab-flask-tdd](https://github.com/nyu-devops/lab-flask-tdd) for code examples to copy from.
+The service starts at **[http://localhost:8080/](http://localhost:8080/)**
 
-## Contents
+---
+
+## 🧾 Data Model
+
+| Field           | Type    | Description                                   |
+| --------------- | ------- | --------------------------------------------- |
+| `id`            | Integer | Auto-generated unique identifier              |
+| `product_id`    | String  | Product SKU or ID                             |
+| `quantity`      | Integer | Current quantity in stock                     |
+| `restock_level` | Integer | Threshold for reordering                      |
+| `condition`     | String  | Condition of item (`new`, `used`, `open_box`) |
+
+---
+
+## 🌐 REST API Endpoints
+
+**Base URL:** `http://localhost:8080`
+
+### Root — `GET /`
+
+Returns service metadata.
+
+```json
+{
+  "name": "Inventory Service",
+  "version": "v1.0.0",
+  "description": "Tracks product quantities, restock levels, and item conditions.",
+  "list_url": "/inventory"
+}
+```
+
+---
+
+### 1. List All Inventory Items — `GET /inventory`
+
+**Response 200**
+
+```json
+[
+  {
+    "id": 1,
+    "product_id": "P1001",
+    "quantity": 25,
+    "restock_level": 10,
+    "condition": "new"
+  },
+  {
+    "id": 2,
+    "product_id": "P1002",
+    "quantity": 5,
+    "restock_level": 20,
+    "condition": "used"
+  }
+]
+```
+
+---
+
+### 2. Create Inventory Record — `POST /inventory`
+
+**Request**
+
+```json
+{
+  "product_id": "P3005",
+  "quantity": 40,
+  "restock_level": 10,
+  "condition": "open_box"
+}
+```
+
+**Response 201**
+
+```json
+{
+  "id": 3,
+  "product_id": "P3005",
+  "quantity": 40,
+  "restock_level": 10,
+  "condition": "open_box"
+}
+```
+
+---
+
+### 3. Retrieve One Record — `GET /inventory/<id>`
+
+**Response 200**
+
+```json
+{
+  "id": 3,
+  "product_id": "P3005",
+  "quantity": 40,
+  "restock_level": 10,
+  "condition": "open_box"
+}
+```
+
+Error: `404 Not Found` — when record doesn’t exist.
+
+---
+
+### 4. Update Record — `PUT /inventory/<id>`
+
+**Request**
+
+```json
+{
+  "quantity": 60,
+  "restock_level": 15
+}
+```
+
+**Response 200**
+
+```json
+{
+  "id": 3,
+  "product_id": "P3005",
+  "quantity": 60,
+  "restock_level": 15,
+  "condition": "open_box"
+}
+```
+
+---
+
+### 5. Delete Record — `DELETE /inventory/<id>`
+
+**Response 204 No Content**
+
+Error: `404 Not Found` — when record doesn’t exist.
+
+---
+
+## ⚡ Example CURL Commands
+
+```bash
+# Create
+curl -X POST http://localhost:8080/inventory \
+     -H "Content-Type: application/json" \
+     -d '{"product_id":"P200","quantity":50,"restock_level":10,"condition":"new"}'
+
+# List all
+curl http://localhost:8080/inventory
+
+# Get one
+curl http://localhost:8080/inventory/1
+
+# Update
+curl -X PUT http://localhost:8080/inventory/1 \
+     -H "Content-Type: application/json" \
+     -d '{"quantity":80,"restock_level":20}'
+
+# Delete
+curl -X DELETE http://localhost:8080/inventory/1
+```
+
+---
+
+## 📊 HTTP Status Codes
+
+| Code                         | Meaning                             | Used When                 |
+| ---------------------------- | ----------------------------------- | ------------------------- |
+| `200 OK`                     | Successful GET or PUT               | Resource found or updated |
+| `201 Created`                | Successful POST                     | Resource created          |
+| `204 No Content`             | Successful DELETE                   | Resource removed          |
+| `400 Bad Request`            | Invalid or missing JSON             | Bad input                 |
+| `404 Not Found`              | Resource doesn’t exist              | Wrong ID                  |
+| `405 Method Not Allowed`     | Unsupported HTTP verb               | e.g. `PUT /inventory`     |
+| `415 Unsupported Media Type` | Content-Type not `application/json` |                           |
+| `500 Internal Server Error`  | Unexpected server error             |                           |
+
+---
+
+## 🧪 Testing & Quality
+
+All code follows **TDD** with pytest.
+Write tests first → implement code → ensure all green.
+
+```bash
+# Run all tests
+make test
+
+# Run coverage
+pytest --cov=service --cov-report term-missing
+
+# Lint for PEP8 compliance
+make lint
+```
+
+✅ Coverage goal: **≥ 95%**
+✅ Pylint score: **≥ 9.0/10**
+
+---
+
+## 🔄 Development Workflow
+
+* Use **GitHub branches** for each story
+* Create **Pull Requests (PRs)** — connect them to ZenHub issues
+* Move stories across columns (`To Do → In Progress → Review/QA → Done`)
+* Use **burndown chart** for sprint tracking
+* Code merges only via approved PRs
+
+---
+
+## 🧰 Project Structure
 
 The project contains the following:
 
@@ -114,7 +303,9 @@ tests/                     - test cases package
 └── test_routes.py         - test suite for service routes
 ```
 
-## License
+---
+
+## 🪪 License
 
 Copyright (c) 2016, 2025 [John Rofrano](https://www.linkedin.com/in/JohnRofrano/). All rights reserved.
 
