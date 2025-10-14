@@ -96,7 +96,7 @@ class TestInventoryModel(TestCase):
 
     def test_update_an_inventory_item(self):
         """It should update an Inventory item in the database"""
-        item = InventoryFactory()
+        item = InventoryFactory(condition=Condition.NEW)
         item.create()
         self.assertIsNotNone(item.id)
 

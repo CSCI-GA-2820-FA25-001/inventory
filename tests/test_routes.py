@@ -144,6 +144,32 @@ class TestYourResourceService(TestCase):
         self.assertEqual(check_item.quantity, new_data["quantity"])
         self.assertEqual(check_item.condition.name, new_data["condition"])
 
+    def test_update_inventory_item_with_invalid_content_type(self):
+        """It should fail to update an Inventory item with invalid Content-Type"""
+        test_item = self._create_inventory_items(1)[0]
+
+        # wrong Content-Type (is_json=False)
+        response = self.client.put(
+            f"{BASE_URL}/{test_item.id}",
+            data="not a json",  # raw data, not JSON
+            content_type="text/plain",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_415_UNSUPPORTED_MEDIA_TYPE)
+        data = response.get_json()
+        self.assertIn("Content-Type must be application/json", data["message"])
+
+    def test_update_inventory_item_not_found(self):
+        """It should return 404 when updating a non-existing Inventory item"""
+        # looking for non exist item
+        response = self.client.put(
+            f"{BASE_URL}/0", json={"quantity": 10, "condition": "USED"}
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        data = response.get_json()
+        self.assertIn("was not found", data["message"])
+
     # ----------------------------------------------------------
     # TEST LIST
     # ----------------------------------------------------------
