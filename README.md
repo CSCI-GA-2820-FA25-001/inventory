@@ -20,7 +20,7 @@ It supports full **CRUD + LIST** operations and returns JSON-only responses, fol
 * **Create** a new inventory record
 * **Read** details of a single product’s inventory
 * **Update** product quantity, restock level, or restock amount
-* **Delete** an inventory record (endpoint not implemented yet)
+* **Delete** an inventory record
 * **List** all inventory items
 * Query by condition (`NEW`, `USED`, `OPEN_BOX`)
 * Health check via root `/` route
@@ -87,13 +87,11 @@ The service starts at **[http://localhost:8080/](http://localhost:8080/)**
 
 ### Root — `GET /`
 
-Returns a plain text reminder message.
+**Response 200**
 
 ```
 Reminder: return some useful information in json format about the service here
 ```
-
-**Response 200**
 
 ---
 
@@ -206,7 +204,7 @@ Error: `404 Not Found` — when record doesn’t exist.
 
 **Response 204 No Content**
 
-Error: `404 Not Found` — when record doesn’t exist.
+Returns 204 regardless of whether the item exists.
 
 ---
 
