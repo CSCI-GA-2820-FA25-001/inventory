@@ -21,6 +21,7 @@ Test cases for Inventory Model
 import os
 import logging
 from service.models import Inventory, DataValidationError
+from unittest.mock import patch
 from unittest import TestCase
 from wsgi import app
 from service.models import Inventory, DataValidationError, db, Condition
@@ -149,6 +150,37 @@ class TestInventoryModel(TestCase):
             item.update()
 
     # ----------------------------------------------------------
+    # TEST DELETE
+    # ----------------------------------------------------------
+    def test_delete_an_inventory_item(self):
+        """It should Delete an Inventory item from the database"""
+        item = InventoryFactory()
+        item.create()
+        self.assertIsNotNone(item.id)
+
+        # Verify it exists
+        self.assertEqual(len(Inventory.all()), 1)
+
+        # Delete it
+        item.delete()
+
+        # Verify it's gone
+        self.assertEqual(len(Inventory.all()), 0)
+        found = Inventory.find(item.id)
+        self.assertIsNone(found)
+
+    def test_delete_with_database_error(self):
+        """It should raise DataValidationError when delete fails due to DB error"""
+        item = InventoryFactory()
+        item.create()
+
+        with patch(
+            "service.models.db.session.commit", side_effect=Exception("DB Error")
+        ):
+            with self.assertRaises(DataValidationError):
+                item.delete()
+
+    # ----------------------------------------------------------
     # TEST MISC
     # ----------------------------------------------------------
     def test_serialize_an_inventory_item(self):
@@ -200,3 +232,23 @@ class TestInventoryModel(TestCase):
         data["condition"] = "SOLD"  # Invalid condition
         new_item = Inventory()
         self.assertRaises(DataValidationError, new_item.deserialize, data)
+
+    def test_find_by_condition(self):
+        """It should Find Inventory items by condition"""
+        items = InventoryFactory.create_batch(3)
+        items[0].condition = Condition.NEW
+        items[1].condition = Condition.USED
+        items[2].condition = Condition.NEW
+
+        for item in items:
+            item.create()
+
+        # Find NEW items
+        new_items = Inventory.find_by_condition(Condition.NEW)
+        new_list = [item for item in new_items]
+        self.assertEqual(len(new_list), 2)
+
+        # Find USED items
+        used_items = Inventory.find_by_condition(Condition.USED)
+        used_list = [item for item in used_items]
+        self.assertEqual(len(used_list), 1)
