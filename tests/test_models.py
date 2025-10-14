@@ -82,6 +82,21 @@ class TestInventoryModel(TestCase):
         self.assertEqual(data.restock_amount, item.restock_amount)
         self.assertEqual(data.condition, item.condition)
 
+    def test_create_inventory_item_with_db_error(self):
+        """It should raise DataValidationError when create() fails"""
+        from service.models import Inventory, DataValidationError
+
+        bad_item = Inventory(
+            product_id=None,
+            quantity=1,
+            restock_level=1,
+            restock_amount=1,
+            condition=None,
+        )
+        # force SQL error by missing required field
+        with self.assertRaises(DataValidationError):
+            bad_item.create()
+
     # ----------------------------------------------------------
     # TEST READ
     # ----------------------------------------------------------
