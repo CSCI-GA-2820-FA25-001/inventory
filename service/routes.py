@@ -153,3 +153,24 @@ def list_inventory_item():
     results = [item.serialize() for item in items]
     app.logger.info("Returning %d inventory items", len(results))
     return jsonify(results), status.HTTP_200_OK
+
+
+######################################################################
+# DELETE AN INVENTORY ITEM
+######################################################################
+@app.route("/inventory/<int:item_id>", methods=["DELETE"])
+def delete_inventory_item(item_id):
+    """
+    Delete an Inventory item
+    This endpoint will delete an Inventory item based on the id specified in the path
+    """
+    app.logger.info("Request to Delete an inventory item with id [%s]", item_id)
+
+    # Delete the Inventory item if it exists
+    item = Inventory.find(item_id)
+    if item:
+        app.logger.info("Inventory item with ID: %d found.", item.id)
+        item.delete()
+
+    app.logger.info("Inventory item with ID: %d delete complete.", item_id)
+    return {}, status.HTTP_204_NO_CONTENT
