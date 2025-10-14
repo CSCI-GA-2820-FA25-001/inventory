@@ -49,8 +49,6 @@ def index():
 #  R E S T   A P I   E N D P O I N T S
 ######################################################################
 
-# Todo: Place your REST API code here ...
-
 
 ######################################################################
 # CREATE AN INVENTORY ITEM

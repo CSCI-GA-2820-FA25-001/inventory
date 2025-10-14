@@ -101,6 +101,7 @@ The service starts at **[http://localhost:8080/](http://localhost:8080/)**
 | `quantity`       | Integer | Current quantity in stock                     |
 | `restock_level`  | Integer | Threshold for reordering                      |
 | `restock_amount` | Integer | Amount to restock when threshold is reached   |
+| `condition` | Enum | Condition of the item   |
 
 
 
@@ -119,10 +120,6 @@ The service starts at **[http://localhost:8080/](http://localhost:8080/)**
 
 **Response 200**
 
-
-```
-Reminder: return some useful information in json format about the service here
-```
 
 
 ```json
@@ -152,14 +149,16 @@ Reminder: return some useful information in json format about the service here
    "product_id": 1001,
    "quantity": 25,
    "restock_level": 10,
-   "restock_amount": 5
+   "restock_amount": 5,
+   "condition": "NEW"
  },
  {
    "id": 2,
    "product_id": 1002,
    "quantity": 5,
    "restock_level": 20,
-   "restock_amount": 10
+   "restock_amount": 10,
+   "condition": "NEW"
  }
 ]
 ```
@@ -179,7 +178,8 @@ Reminder: return some useful information in json format about the service here
  "product_id": 3005,
  "quantity": 40,
  "restock_level": 10,
- "restock_amount": 5
+ "restock_amount": 5,
+ "condition": "OLD"
 }
 ```
 
@@ -193,7 +193,8 @@ Reminder: return some useful information in json format about the service here
  "product_id": 3005,
  "quantity": 40,
  "restock_level": 10,
- "restock_amount": 5
+ "restock_amount": 5,
+ "condition": "OLD"
 }
 ```
 
@@ -216,7 +217,8 @@ Reminder: return some useful information in json format about the service here
  "product_id": 3005,
  "quantity": 40,
  "restock_level": 10,
- "restock_amount": 5
+ "restock_amount": 5,
+ "condition": "OPEN_BOX"
 }
 ```
 
@@ -251,7 +253,8 @@ Error: `404 Not Found` — when record doesn’t exist.
  "product_id": 3005,
  "quantity": 60,
  "restock_level": 15,
- "restock_amount": 10
+ "restock_amount": 10,
+ "condition": "New"
 }
 ```
 
