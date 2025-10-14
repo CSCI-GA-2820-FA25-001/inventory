@@ -20,7 +20,6 @@ Test cases for Inventory Model
 # pylint: disable=duplicate-code
 import os
 import logging
-from service.models import Inventory, DataValidationError
 from unittest.mock import patch
 from unittest import TestCase
 from wsgi import app
@@ -85,7 +84,6 @@ class TestInventoryModel(TestCase):
 
     def test_create_inventory_item_with_db_error(self):
         """It should raise DataValidationError when create() fails"""
-        from service.models import Inventory, DataValidationError
 
         bad_item = Inventory(
             product_id=None,
@@ -245,10 +243,10 @@ class TestInventoryModel(TestCase):
 
         # Find NEW items
         new_items = Inventory.find_by_condition(Condition.NEW)
-        new_list = [item for item in new_items]
+        new_list = list(new_items)
         self.assertEqual(len(new_list), 2)
 
         # Find USED items
         used_items = Inventory.find_by_condition(Condition.USED)
-        used_list = [item for item in used_items]
+        used_list = list(used_items)
         self.assertEqual(len(used_list), 1)
