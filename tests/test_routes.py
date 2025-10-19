@@ -24,7 +24,7 @@ import logging
 from unittest import TestCase
 from wsgi import app
 from service.common import status
-from service.models import db, Inventory
+from service.models import db, Inventory, Condition
 from tests.factories import InventoryFactory
 
 DATABASE_URI = os.getenv(
@@ -214,3 +214,63 @@ class TestYourResourceService(TestCase):
         response = self.client.delete(f"{BASE_URL}/0")
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertEqual(len(response.data), 0)
+
+    # ----------------------------------------------------------
+    # TEST QUERY
+    # ----------------------------------------------------------
+    def test_query_by_product_id(self):
+        """It should Query Inventory items by product_id"""
+        items = self._create_inventory_items(5)
+        test_product_id = items[0].product_id
+        expected = [item for item in items if item.product_id == test_product_id]
+
+        response = self.client.get(BASE_URL, query_string=f"product_id={test_product_id}")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.get_json()
+        self.assertEqual(len(data), len(expected))
+        for item in data:
+            self.assertEqual(item["product_id"], test_product_id)
+
+    def test_query_by_quantity(self):
+        """It should Query Inventory items by quantity"""
+        items = self._create_inventory_items(5)
+        test_quantity = items[0].quantity
+        expected = [item for item in items if item.quantity == test_quantity]
+
+        response = self.client.get(BASE_URL, query_string=f"quantity={test_quantity}")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.get_json()
+        self.assertEqual(len(data), len(expected))
+        for item in data:
+            self.assertEqual(item["quantity"], test_quantity)
+
+    def test_query_by_restock_level(self):
+        """It should Query Inventory items by restock_level"""
+        items = self._create_inventory_items(5)
+        test_restock_level = items[0].restock_level
+        expected = [item for item in items if item.restock_level == test_restock_level]
+
+        response = self.client.get(BASE_URL, query_string=f"restock_level={test_restock_level}")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.get_json()
+        self.assertEqual(len(data), len(expected))
+        for item in data:
+            self.assertEqual(item["restock_level"], test_restock_level)
+
+    def test_query_by_condition(self):
+        """It should Query Inventory items by Condition"""
+
+        inventories = self._create_inventory_items(10)
+
+        new_items = [inv for inv in inventories if inv.condition == Condition.NEW]
+        new_count = len(new_items)
+        logging.debug("New condition items [%d] %s", new_count, new_items)
+
+        # test for new
+        response = self.client.get(BASE_URL, query_string="condition=new")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        data = response.get_json()
+        self.assertEqual(len(data), new_count)
+        for item in data:
+            self.assertEqual(item["condition"], Condition.NEW.name)
