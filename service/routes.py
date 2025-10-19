@@ -25,7 +25,7 @@ from flask import jsonify, request, url_for, abort
 from flask import current_app as app  # Import Flask application
 from service.models import Inventory
 from service.common import status  # HTTP Status Codes
-
+from service.models import Condition
 
 ######################################################################
 # GET INDEX
@@ -152,7 +152,28 @@ def list_inventory_item():
 
     app.logger.info("Request for inventory list")
 
-    items = Inventory.all()
+    product_id = request.args.get("product_id")
+    quantity = request.args.get("quantity")
+    restock_level = request.args.get("restock_level")
+    condition = request.args.get("condition")
+
+    items = []
+
+    if product_id:
+        app.logger.info("Find by product_id: %s", product_id)
+        items = Inventory.query.filter_by(product_id=int(product_id)).all()
+    elif quantity:
+        app.logger.info("Find by quantity: %s", quantity)
+        items = Inventory.query.filter_by(quantity=int(quantity)).all()
+    elif restock_level:
+        app.logger.info("Find by restock_level: %s", restock_level)
+        items = Inventory.query.filter_by(restock_level=int(restock_level)).all()
+    elif condition:
+        app.logger.info("Find by condition: %s", condition)
+        items = Inventory.find_by_condition(Condition[condition.upper()]).all()
+    else:
+        app.logger.info("Find all")
+        items = Inventory.all()
 
     results = [item.serialize() for item in items]
     app.logger.info("Returning %d inventory items", len(results))
