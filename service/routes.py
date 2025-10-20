@@ -31,6 +31,7 @@ from service.models import Condition
 # GET INDEX
 ######################################################################
 
+
 @app.route("/")
 def index():
     """Root URL response"""
@@ -156,6 +157,7 @@ def list_inventory_item():
     quantity = request.args.get("quantity")
     restock_level = request.args.get("restock_level")
     condition = request.args.get("condition")
+    query = request.args.get("query")
 
     items = []
 
@@ -171,6 +173,9 @@ def list_inventory_item():
     elif condition:
         app.logger.info("Find by condition: %s", condition)
         items = Inventory.find_by_condition(Condition[condition.upper()]).all()
+    elif query:
+        app.logger.info("Find by description LIKE: %s", query)
+        items = Inventory.query.filter(Inventory.description.ilike(f"%{query}%")).all()
     else:
         app.logger.info("Find all")
         items = Inventory.all()
