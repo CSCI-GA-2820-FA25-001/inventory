@@ -53,7 +53,7 @@ def index():
 
 ######################################################################
 # CREATE AN INVENTORY ITEM
-# created by Jason, should be replaced by @Sichen Zhong's code
+# created by Jason
 ######################################################################
 @app.route("/inventory", methods=["POST"])
 def create_inventory():
@@ -204,3 +204,33 @@ def delete_inventory_item(item_id):
 
     app.logger.info("Inventory item with ID: %d delete complete.", item_id)
     return {}, status.HTTP_204_NO_CONTENT
+
+######################################################################
+# RESTOCK AN INVENTORY ITEM
+######################################################################
+@app.route("/inventory/<int:item_id>/restock", methods=["PUT"])
+def restock_inventory_item(item_id):
+    """
+    Restock an Inventory item
+    This endpoint will increase the quantity of an Inventory item by its restock_amount
+    """
+    app.logger.info("Request to restock Inventory item with id [%s]", item_id)
+
+    # Find the inventory item
+    item = Inventory.find(item_id)
+    if not item:
+        abort(
+            status.HTTP_404_NOT_FOUND,
+            f"Inventory item with id '{item_id}' was not found.",
+        )
+
+    # Increase quantity by restock_amount
+    item.quantity += item.restock_amount
+    item.update()
+
+    app.logger.info(
+        "Inventory item with ID [%s] restocked. New quantity: %s",
+        item_id,
+        item.quantity,
+    )
+    return jsonify(item.serialize()), status.HTTP_200_OK
