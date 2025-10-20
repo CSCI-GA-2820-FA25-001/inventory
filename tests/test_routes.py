@@ -296,3 +296,59 @@ class TestYourResourceService(TestCase):
         data = response.get_json()
         self.assertGreaterEqual(len(data), 1)
         self.assertIn("widget", data[0]["description"].lower())
+        
+    # ----------------------------------------------------------
+    # TEST RESTOCK
+    # ----------------------------------------------------------
+    def test_restock_inventory_item(self):
+        """It should Restock an existing inventory item"""
+        # Create an inventory item with known values
+        test_item = self._create_inventory_items(1)[0]
+        original_quantity = test_item.quantity
+        restock_amount = test_item.restock_amount
+
+        # Send restock request
+        response = self.client.put(f"{BASE_URL}/{test_item.id}/restock")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        # Verify the response
+        data = response.get_json()
+        self.assertEqual(data["id"], test_item.id)
+        self.assertEqual(data["quantity"], original_quantity + restock_amount)
+
+        # Verify the item was updated in the database
+        updated_item = Inventory.find(test_item.id)
+        self.assertEqual(updated_item.quantity, original_quantity + restock_amount)
+
+    def test_restock_inventory_item_not_found(self):
+        """It should return 404 when restocking a non-existent inventory item"""
+        # Try to restock an item that doesn't exist
+        response = self.client.put(f"{BASE_URL}/999/restock")
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        data = response.get_json()
+        self.assertIn("was not found", data["message"])
+
+    def test_restock_multiple_times(self):
+        """It should correctly restock an item multiple times"""
+        # Create an inventory item
+        test_item = self._create_inventory_items(1)[0]
+        original_quantity = test_item.quantity
+        restock_amount = test_item.restock_amount
+
+        # Restock first time
+        response = self.client.put(f"{BASE_URL}/{test_item.id}/restock")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.get_json()
+        self.assertEqual(data["quantity"], original_quantity + restock_amount)
+
+        # Restock second time
+        response = self.client.put(f"{BASE_URL}/{test_item.id}/restock")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.get_json()
+        self.assertEqual(data["quantity"], original_quantity + (2 * restock_amount))
+
+        # Verify in database
+        updated_item = Inventory.find(test_item.id)
+        self.assertEqual(
+            updated_item.quantity, original_quantity + (2 * restock_amount)
+        )
