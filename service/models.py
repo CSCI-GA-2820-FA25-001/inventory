@@ -46,6 +46,7 @@ class Inventory(db.Model):
     condition = db.Column(
         db.Enum(Condition), nullable=False, server_default=(Condition.NEW.name)
     )
+    description = db.Column(db.Text, nullable=True)
 
     def __repr__(self):
         return f"<Inventory product_id={self.product_id} id=[{self.id}]>"
@@ -97,6 +98,7 @@ class Inventory(db.Model):
             "restock_level": self.restock_level,
             "restock_amount": self.restock_amount,
             "condition": self.condition.name,  # Return the name of the enum
+            "description": self.description,
         }
 
     def deserialize(self, data):
@@ -113,6 +115,7 @@ class Inventory(db.Model):
             self.restock_amount = data["restock_amount"]
             # Look up the enum from the string
             self.condition = getattr(Condition, data["condition"])
+            self.description = data.get("description", None)
         except AttributeError as error:
             raise DataValidationError("Invalid attribute: " + error.args[0]) from error
         except KeyError as error:

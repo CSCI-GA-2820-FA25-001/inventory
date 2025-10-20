@@ -224,7 +224,9 @@ class TestYourResourceService(TestCase):
         test_product_id = items[0].product_id
         expected = [item for item in items if item.product_id == test_product_id]
 
-        response = self.client.get(BASE_URL, query_string=f"product_id={test_product_id}")
+        response = self.client.get(
+            BASE_URL, query_string=f"product_id={test_product_id}"
+        )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data = response.get_json()
         self.assertEqual(len(data), len(expected))
@@ -250,7 +252,9 @@ class TestYourResourceService(TestCase):
         test_restock_level = items[0].restock_level
         expected = [item for item in items if item.restock_level == test_restock_level]
 
-        response = self.client.get(BASE_URL, query_string=f"restock_level={test_restock_level}")
+        response = self.client.get(
+            BASE_URL, query_string=f"restock_level={test_restock_level}"
+        )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data = response.get_json()
         self.assertEqual(len(data), len(expected))
@@ -274,3 +278,21 @@ class TestYourResourceService(TestCase):
         self.assertEqual(len(data), new_count)
         for item in data:
             self.assertEqual(item["condition"], Condition.NEW.name)
+
+    def test_query_by_description(self):
+        """It should Query Inventory items by description substring"""
+        items = self._create_inventory_items(3)
+
+        # Update one with a specific description
+        target = items[0]
+        new_data = target.serialize()
+        new_data["description"] = "blue widget for testing"
+        response = self.client.put(f"{BASE_URL}/{target.id}", json=new_data)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        # Search by query parameter
+        response = self.client.get(BASE_URL, query_string="query=widget")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.get_json()
+        self.assertGreaterEqual(len(data), 1)
+        self.assertIn("widget", data[0]["description"].lower())
