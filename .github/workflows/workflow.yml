@@ -1,50 +1,44 @@
 name: CI Build
 on:
   push:
-    branches:
-      - master
+    branches: [ master ]
   pull_request:
-    branches:
-      - master
+    branches: [ master ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    container: python:3.11-slim
 
-    # Required services    
+    container:
+      image: python:3.11.12-bullseye
+
     services:
-      # Label used to access the service container
-      redis:
-        # Docker Hub image
-        image: redis:6-alpine
-        # Set health checks to wait until redis has started
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-    # Steps for the build
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-            
-      - name: Install Python package dependencies
-        run: |
-          python -m pip install -U pip pipenv
-          pipenv install --system --dev
-
-      - name: Linting
-        run: |
-          # stop the build if there are Python syntax errors or undefined names
-          flake8 service tests --count --select=E9,F63,F7,F82 --show-source --statistics
-          # test for complexity. The GitHub editor is 127 chars wide
-          flake8 service tests --count --max-complexity=10 --max-line-length=127 --statistics
-          # Run pylint to catch other PEP8 errors
-          pylint service tests --max-line-length=127
-
-      - name: Run unit tests with PyTest
-        run: pytest --pspec --cov=service --cov-fail-under=95 --cov-report=xml
+      postgres:
+        image: postgres:15-alpine
         env:
-          DATABASE_URI: "redis://redis:6379"
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: pgs3cr3t
+          POSTGRES_DB: postgres
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          python -m pip install -U pip
+          pip install -r requirements.txt
+          pip install "psycopg[binary]>=3" pytest-cov pytest-pspec
+
+      - name: Run unit tests
+        env:
+          DATABASE_URI: "postgresql+psycopg://postgres:pgs3cr3t@postgres:5432/postgres"
+          FLASK_ENV: "testing"
+        run: pytest --pspec --cov=service --cov-fail-under=95 --cov-report=xml
