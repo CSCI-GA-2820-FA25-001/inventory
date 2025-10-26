@@ -5,6 +5,8 @@
 [![Python](https://img.shields.io/badge/Language-Python-blue.svg)](https://python.org/)
 [![Tests](https://img.shields.io/badge/Coverage-95%25%2B-brightgreen.svg)](https://pytest.org/)
 
+[![Build Status](https://github.com/CSCI-GA-2820-FA25-001/inventory/actions/workflows/workflow.yml/badge.svg)](https://github.com/CSCI-GA-2820-FA25-001/inventory/actions)
+
 
 A RESTful microservice for managing **product inventory** for an eCommerce platform, developed by the **Inventory Squad** for NYU’s **CSCI-GA-2820-001 DevOps and Agile Methodologies (Fall 2025)**.
 
