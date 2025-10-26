@@ -205,6 +205,7 @@ def delete_inventory_item(item_id):
     app.logger.info("Inventory item with ID: %d delete complete.", item_id)
     return {}, status.HTTP_204_NO_CONTENT
 
+
 ######################################################################
 # RESTOCK AN INVENTORY ITEM
 ######################################################################

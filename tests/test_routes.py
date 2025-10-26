@@ -296,7 +296,7 @@ class TestYourResourceService(TestCase):
         data = response.get_json()
         self.assertGreaterEqual(len(data), 1)
         self.assertIn("widget", data[0]["description"].lower())
-        
+
     # ----------------------------------------------------------
     # TEST RESTOCK
     # ----------------------------------------------------------
