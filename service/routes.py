@@ -122,14 +122,7 @@ def update_inventory_item(item_id):
     """
     app.logger.info("Request to update Inventory item with id [%s]", item_id)
 
-    if not request.is_json:
-        abort(
-            status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-            "Content-Type must be application/json",
-        )
-
-    data = request.get_json()
-
+    # Find item FIRST before validation
     item = Inventory.find(item_id)
     if not item:
         abort(
@@ -137,6 +130,13 @@ def update_inventory_item(item_id):
             f"Inventory item with id '{item_id}' was not found.",
         )
 
+    if not request.is_json:
+        abort(
+            status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            "Content-Type must be application/json",
+        )
+
+    data = request.get_json()
     item.deserialize(data)
     item.id = item_id
     item.update()
