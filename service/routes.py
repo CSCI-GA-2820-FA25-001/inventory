@@ -122,14 +122,7 @@ def update_inventory_item(item_id):
     """
     app.logger.info("Request to update Inventory item with id [%s]", item_id)
 
-    if not request.is_json:
-        abort(
-            status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-            "Content-Type must be application/json",
-        )
-
-    data = request.get_json()
-
+    # Find item FIRST before validation
     item = Inventory.find(item_id)
     if not item:
         abort(
@@ -137,6 +130,13 @@ def update_inventory_item(item_id):
             f"Inventory item with id '{item_id}' was not found.",
         )
 
+    if not request.is_json:
+        abort(
+            status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            "Content-Type must be application/json",
+        )
+
+    data = request.get_json()
     item.deserialize(data)
     item.id = item_id
     item.update()
@@ -171,8 +171,12 @@ def list_inventory_item():
         app.logger.info("Find by restock_level: %s", restock_level)
         items = Inventory.query.filter_by(restock_level=int(restock_level)).all()
     elif condition:
-        app.logger.info("Find by condition: %s", condition)
-        items = Inventory.find_by_condition(Condition[condition.upper()]).all()
+        try:
+            app.logger.info("Find by condition: %s", condition)
+            items = Inventory.find_by_condition(Condition[condition.upper()]).all()
+        except KeyError:
+            app.logger.warning("Invalid condition: %s", condition)
+            items = []
     elif query:
         app.logger.info("Find by description LIKE: %s", query)
         items = Inventory.query.filter(Inventory.description.ilike(f"%{query}%")).all()
