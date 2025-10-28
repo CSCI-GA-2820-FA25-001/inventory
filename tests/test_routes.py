@@ -279,6 +279,14 @@ class TestYourResourceService(TestCase):
         for item in data:
             self.assertEqual(item["condition"], Condition.NEW.name)
 
+    def test_query_by_invalid_condition(self):
+        """It should return empty array for invalid condition"""
+        self._create_inventory_items(3)
+        response = self.client.get(BASE_URL, query_string="condition=invalid")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.get_json()
+        self.assertEqual(len(data), 0)
+
     def test_query_by_description(self):
         """It should Query Inventory items by description substring"""
         items = self._create_inventory_items(3)
