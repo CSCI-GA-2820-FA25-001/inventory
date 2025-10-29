@@ -355,6 +355,67 @@ make lint
 Coverage goal: **≥ 95%**
 Pylint score: **≥ 9.0/10**
 
+---
+
+
+## Kubernetes Deployment
+
+### Prerequisites
+
+* Docker Desktop
+* kubectl
+* k3d
+
+### Deploy to Local Kubernetes Cluster
+
+**Step 1: Create the K3s Cluster**
+```bash
+make cluster
+```
+
+This creates a K3s cluster named `nyu-devops` with a local registry and 2 worker nodes.
+
+**Step 2: Build the Docker Image**
+```bash
+make build
+```
+
+**Step 3: Verify Cluster Info**
+```bash
+kubectl cluster-info
+```
+
+**Step 4: Deploy to Kubernetes**
+```bash
+make deploy
+```
+
+**Step 5: Push Image to Cluster Registry**
+```bash
+docker tag cluster-registry:5001/inventory:1.0 localhost:5001/inventory:1.0
+docker push localhost:5001/inventory:1.0
+```
+
+**Step 6: Verify Deployment**
+
+Wait for all pods to reach `Running` status:
+```bash
+kubectl get pods
+```
+
+You should see 3 inventory pods and 1 postgres pod all in `Running` state.
+
+**Step 7: Test the Application**
+```bash
+# Root endpoint
+curl -H "Host: cluster-registry" http://localhost:8080/
+
+# List all inventory items
+curl -H "Host: cluster-registry" http://localhost:8080/inventory
+
+# Health check
+curl -H "Host: cluster-registry" http://localhost:8080/health
+```
 
 ---
 
