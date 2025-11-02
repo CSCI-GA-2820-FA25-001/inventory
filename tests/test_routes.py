@@ -24,7 +24,7 @@ import logging
 from unittest import TestCase
 from wsgi import app
 from service.common import status
-from service.models import db, Inventory, Condition
+from service.models import db, Inventory
 from tests.factories import InventoryFactory
 
 DATABASE_URI = os.getenv(
