@@ -270,22 +270,55 @@ class TestYourResourceService(TestCase):
             self.assertEqual(item["restock_level"], test_restock_level)
 
     def test_query_by_condition(self):
-        """It should Query Inventory items by Condition"""
+        """It should Query Inventory items by condition and support multiple filters with lt/gt"""
+        inventories = self._create_inventory_items(3)
 
-        inventories = self._create_inventory_items(10)
+        for inv in inventories:
+            update_data = inv.serialize()
+            update_data["condition"] = "USED"
+            update_data["quantity"] = 50
+            update_data["restock_level"] = 0
+            response = self.client.put(f"{BASE_URL}/{inv.id}", json=update_data)
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        new_items = [inv for inv in inventories if inv.condition == Condition.NEW]
-        new_count = len(new_items)
-        logging.debug("New condition items [%d] %s", new_count, new_items)
-
-        # test for new
-        response = self.client.get(BASE_URL, query_string="condition=new")
+        target_lt_gt = inventories[0].serialize()
+        target_lt_gt["condition"] = "NEW"
+        target_lt_gt["quantity"] = 5
+        target_lt_gt["restock_level"] = 20
+        response = self.client.put(f"{BASE_URL}/{inventories[0].id}", json=target_lt_gt)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        data = response.get_json()
-        self.assertEqual(len(data), new_count)
-        for item in data:
-            self.assertEqual(item["condition"], Condition.NEW.name)
+        target_gt_lt = inventories[1].serialize()
+        target_gt_lt["condition"] = "NEW"
+        target_gt_lt["quantity"] = 20
+        target_gt_lt["restock_level"] = 5
+        response = self.client.put(f"{BASE_URL}/{inventories[1].id}", json=target_gt_lt)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        other = inventories[2].serialize()
+        other["condition"] = "NEW"
+        other["quantity"] = 15
+        other["restock_level"] = 15
+        response = self.client.put(f"{BASE_URL}/{inventories[2].id}", json=other)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        resp = self.client.get(
+            BASE_URL, query_string="condition=NEW&quantity_lt=10&restock_gt=10"
+        )
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        data = resp.get_json()
+        self.assertEqual(len(data), 1)
+        self.assertLess(data[0]["quantity"], 10)
+        self.assertGreater(data[0]["restock_level"], 10)
+
+        resp = self.client.get(
+            BASE_URL, query_string="condition=NEW&quantity_gt=10&restock_lt=10"
+        )
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        data = resp.get_json()
+        self.assertEqual(len(data), 1)
+        self.assertGreater(data[0]["quantity"], 10)
+        self.assertLess(data[0]["restock_level"], 10)
 
     def test_query_by_invalid_condition(self):
         """It should return empty array for invalid condition"""

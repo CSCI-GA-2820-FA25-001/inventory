@@ -27,6 +27,7 @@ from service.models import Inventory
 from service.common import status  # HTTP Status Codes
 from service.models import Condition
 
+
 ######################################################################
 # GET HEALTH CHECK
 ######################################################################
@@ -34,6 +35,7 @@ from service.models import Condition
 def health_check():
     """Let them know our heart is still beating"""
     return jsonify(status=200, message="Healthy"), status.HTTP_200_OK
+
 
 ######################################################################
 # GET INDEX
@@ -48,7 +50,7 @@ def index():
         jsonify(
             name="Inventory REST API Service",
             version="1.0",
-            paths=url_for("list_inventory_item", _external=True),
+            paths=url_for("list_inventory_items", _external=True),
         ),
         status.HTTP_200_OK,
     )
@@ -156,44 +158,55 @@ def update_inventory_item(item_id):
 # LIST ALL INVENTORY ITEMS
 ######################################################################
 @app.route("/inventory", methods=["GET"])
-def list_inventory_item():
-    """Returns all of the Inventory Items"""
+def list_inventory_items():
+    """Returns all of the Inventory Items, supporting multi-filter queries."""
 
     app.logger.info("Request for inventory list")
 
-    product_id = request.args.get("product_id")
-    quantity = request.args.get("quantity")
-    restock_level = request.args.get("restock_level")
+    # Query parameters
+    product_id = request.args.get("product_id", type=int)
     condition = request.args.get("condition")
+    quantity = request.args.get("quantity", type=int)
+    quantity_lt = request.args.get("quantity_lt", type=int)
+    quantity_gt = request.args.get("quantity_gt", type=int)
+    restock_level = request.args.get("restock_level", type=int)
+    restock_lt = request.args.get("restock_lt", type=int)
+    restock_gt = request.args.get("restock_gt", type=int)
     query = request.args.get("query")
 
-    items = []
+    # Start query
+    q = Inventory.query
 
-    if product_id:
-        app.logger.info("Find by product_id: %s", product_id)
-        items = Inventory.query.filter_by(product_id=int(product_id)).all()
-    elif quantity:
-        app.logger.info("Find by quantity: %s", quantity)
-        items = Inventory.query.filter_by(quantity=int(quantity)).all()
-    elif restock_level:
-        app.logger.info("Find by restock_level: %s", restock_level)
-        items = Inventory.query.filter_by(restock_level=int(restock_level)).all()
-    elif condition:
+    if condition:
         try:
-            app.logger.info("Find by condition: %s", condition)
-            items = Inventory.find_by_condition(Condition[condition.upper()]).all()
+            q = q.filter(Inventory.condition == Condition[condition.upper()])
         except KeyError:
             app.logger.warning("Invalid condition: %s", condition)
-            items = []
-    elif query:
-        app.logger.info("Find by description LIKE: %s", query)
-        items = Inventory.query.filter(Inventory.description.ilike(f"%{query}%")).all()
-    else:
-        app.logger.info("Find all")
-        items = Inventory.all()
+            return jsonify([]), status.HTTP_200_OK
 
+    # Apply filters dynamically
+    if product_id is not None:
+        q = q.filter(Inventory.product_id == product_id)
+    if quantity is not None:
+        q = q.filter(Inventory.quantity == quantity)
+    if quantity_lt is not None:
+        q = q.filter(Inventory.quantity < quantity_lt)
+    if quantity_gt is not None:
+        q = q.filter(Inventory.quantity > quantity_gt)
+    if restock_level is not None:
+        q = q.filter(Inventory.restock_level == restock_level)
+    if restock_lt is not None:
+        q = q.filter(Inventory.restock_level < restock_lt)
+    if restock_gt is not None:
+        q = q.filter(Inventory.restock_level > restock_gt)
+    if query:
+        q = q.filter(Inventory.description.ilike(f"%{query}%"))
+
+    # Execute final query
+    items = q.all()
     results = [item.serialize() for item in items]
-    app.logger.info("Returning %d inventory items", len(results))
+
+    app.logger.info("Returning %d filtered inventory items", len(results))
     return jsonify(results), status.HTTP_200_OK
 
 
