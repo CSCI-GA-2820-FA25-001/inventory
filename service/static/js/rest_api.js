@@ -91,6 +91,70 @@ $(function () {
 
 
     // ****************************************
+    // UPDATE an Inventory Item
+    // ****************************************
+    
+    $("#update-btn").click(function () {
+    
+        let item_id = $("#item_id").val();
+        let product_id = $("#product_id").val();
+        let condition = $("#condition").val();
+        let quantity = $("#quantity").val();
+        let restock_level = $("#restock_level").val();
+        let restock_amount = $("#restock_amount").val();
+        let description = $("#description").val();
+    
+        // Validation: Check that item_id exists
+        if (!item_id) {
+            flash_message("Error: Item ID is required for update! Please retrieve an item first.");
+            return;
+        }
+    
+        // Validation: Check required fields
+        if (!product_id) {
+            flash_message("Error: Product ID is required!");
+            return;
+        }
+        if (!condition) {
+            flash_message("Error: Condition is required!");
+            return;
+        }
+        if (!quantity) {
+            flash_message("Error: Quantity is required!");
+            return;
+        }
+    
+        let data = {
+            "product_id": parseInt(product_id),
+            "condition": condition,
+            "quantity": parseInt(quantity),
+            "restock_level": parseInt(restock_level) || 0,
+            "restock_amount": parseInt(restock_amount) || 0,
+            "description": description || ""
+        };
+    
+        $("#flash_message").empty();
+    
+        let ajax = $.ajax({
+            type: "PUT",
+            url: `/inventory/${item_id}`,
+            contentType: "application/json",
+            data: JSON.stringify(data)
+        });
+    
+        ajax.done(function(res){
+            update_form_data(res);
+            flash_message("Success: Inventory item updated!");
+        });
+    
+        ajax.fail(function(res){
+            flash_message(res.responseJSON?.message || "Error: Failed to update inventory item!");
+        });
+    });
+
+    
+
+    // ****************************************
     // LIST (Search for Inventory Items)
     // ****************************************
 
