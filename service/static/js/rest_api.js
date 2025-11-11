@@ -235,6 +235,41 @@ $(function () {
         });
     });
 
+
+    // ****************************************
+    // DELETE an Inventory Item
+    // ****************************************
+    
+    $("#delete-btn").click(function () {
+    
+        let item_id = $("#item_id").val();
+    
+        // Validation: Check that item_id exists
+        if (!item_id) {
+            flash_message("Error: Item ID is required for delete! Please retrieve an item first.");
+            return;
+        }
+    
+        $("#flash_message").empty();
+    
+        let ajax = $.ajax({
+            type: "DELETE",
+            url: `/inventory/${item_id}`,
+            contentType: "application/json",
+            data: ''
+        });
+    
+        ajax.done(function(res){
+            clear_form_data();
+            flash_message("Success: Inventory item has been deleted!");
+        });
+    
+        ajax.fail(function(res){
+            flash_message(res.responseJSON?.message || "Error: Failed to delete inventory item!");
+        });
+    });
+    
+
     // ****************************************
     // CLEAR THE FORM
     // ****************************************
