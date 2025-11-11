@@ -90,11 +90,10 @@ class TestYourResourceService(TestCase):
     ######################################################################
 
     def test_index(self):
-        """It should call the Home Page for Inventory"""
+        """It should return the Inventory UI home page"""
         response = self.client.get("/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        data = response.get_json()
-        self.assertEqual(data["name"], "Inventory REST API Service")
+        self.assertIn(b"Inventory REST API Service", response.data)
 
     def test_health(self):
         """It should be healthy"""
