@@ -1,0 +1,140 @@
+$(function () {
+
+    // ****************************************
+    //  U T I L I T Y   F U N C T I O N S
+    // ****************************************
+
+    // Updates the form with data from the response
+    function update_form_data(res) {
+        $("#item_id").val(res.id);
+        $("#product_id").val(res.product_id);
+        $("#condition").val(res.condition);
+        $("#quantity").val(res.quantity);
+        $("#restock_level").val(res.restock_level);
+        $("#restock_amount").val(res.restock_amount);
+        $("#description").val(res.description);
+    }
+
+    // Clears all form fields
+    function clear_form_data() {
+        $("#item_id").val("");
+        $("#product_id").val("");
+        $("#condition").val("");
+        $("#quantity").val("");
+        $("#restock_level").val("");
+        $("#restock_amount").val("");
+        $("#description").val("");
+    }
+
+    // Updates the flash message area
+    function flash_message(message) {
+        $("#flash_message").empty();
+        $("#flash_message").append(message);
+    }
+
+    // ****************************************
+    // LIST (Search for Inventory Items)
+    // ****************************************
+
+    $("#search-btn").click(function () {
+
+        let product_id = $("#product_id").val();
+        let condition = $("#condition").val();
+        let description = $("#description").val();
+
+        let queryString = "";
+
+        if (product_id) {
+            queryString += "product_id=" + product_id;
+        }
+        if (condition) {
+            if (queryString.length > 0) queryString += "&";
+            queryString += "condition=" + condition;
+        }
+        if (description) {
+            if (queryString.length > 0) queryString += "&";
+            queryString += "query=" + encodeURIComponent(description);
+        }
+
+        $("#flash_message").empty();
+
+        let ajax = $.ajax({
+            type: "GET",
+            url: `/inventory?${queryString}`,
+            contentType: "application/json",
+            data: ""
+        });
+
+        ajax.done(function (res) {
+            $("#search_results").empty();
+
+            let table = '<table class="table table-striped" cellpadding="10">';
+            table += '<thead><tr>';
+            table += '<th class="col-md-1">ID</th>';
+            table += '<th class="col-md-2">Product ID</th>';
+            table += '<th class="col-md-2">Condition</th>';
+            table += '<th class="col-md-2">Quantity</th>';
+            table += '<th class="col-md-2">Restock Level</th>';
+            table += '<th class="col-md-2">Restock Amount</th>';
+            table += '<th class="col-md-3">Description</th>';
+            table += '</tr></thead><tbody>';
+
+            let firstItem = "";
+            for (let i = 0; i < res.length; i++) {
+                let item = res[i];
+                table += `<tr id="row_${i}">
+                            <td>${item.id}</td>
+                            <td>${item.product_id}</td>
+                            <td>${item.condition}</td>
+                            <td>${item.quantity}</td>
+                            <td>${item.restock_level}</td>
+                            <td>${item.restock_amount}</td>
+                            <td>${item.description}</td>
+                          </tr>`;
+                if (i === 0) {
+                    firstItem = item;
+                }
+            }
+
+            table += '</tbody></table>';
+            $("#search_results").append(table);
+
+            // Copy the first result to the form
+            if (firstItem) {
+                update_form_data(firstItem);
+            }
+
+            flash_message("Success");
+        });
+
+        ajax.fail(function (res) {
+            clear_form_data();
+            flash_message(res.responseJSON?.message || "Server error!");
+        });
+    });
+
+    // ****************************************
+    // CLEAR THE FORM
+    // ****************************************
+
+    $("#clear-btn").click(function () {
+        $("#item_id").val("");
+        $("#flash_message").empty();
+        clear_form_data();
+        $("#search_results").empty();
+    });
+
+    // ****************************************
+    // PLACEHOLDER BUTTONS (Not Implemented)
+    // ****************************************
+
+    $("#create-btn, #update-btn, #delete-btn, #retrieve-btn, #restock-btn").click(function () {
+        flash_message("⚠️ This function is not implemented yet.");
+    });
+
+    // ****************************************
+    // AUTO LOAD LIST ON PAGE LOAD
+    // ****************************************
+
+    $("#search-btn").click();
+});
