@@ -293,5 +293,83 @@ $(function () {
     // AUTO LOAD LIST ON PAGE LOAD
     // ****************************************
 
-    $("#search-btn").click();
+    $("#search-btn").click(function () {
+        let product_id = $("#product_id").val();
+        let condition = $("#condition").val();
+        let description = $("#description").val();
+        let quantity_lt = $("#quantity_lt").val();
+        let restock_needed = $("#restock_needed").is(":checked");
+
+        let queryString = "";
+
+        if (product_id) {
+            queryString += "product_id=" + product_id;
+        }
+        if (condition) {
+            if (queryString.length > 0) queryString += "&";
+            queryString += "condition=" + condition;
+        }
+        if (description) {
+            if (queryString.length > 0) queryString += "&";
+            queryString += "query=" + encodeURIComponent(description);
+        }
+        if (quantity_lt) {
+            if (queryString.length > 0) queryString += "&";
+            queryString += "quantity_lt=" + quantity_lt;
+        }
+        if (restock_needed) {
+            if (queryString.length > 0) queryString += "&";
+            queryString += "restock_needed=true";
+        }
+
+        $("#flash_message").empty();
+
+        let ajax = $.ajax({
+            type: "GET",
+            url: `/inventory?${queryString}`,
+            contentType: "application/json",
+            data: ""
+        });
+
+        ajax.done(function (res) {
+            $("#search_results").empty();
+
+            let table = '<table class="table table-striped" cellpadding="10">';
+            table += '<thead><tr>';
+            table += '<th>ID</th><th>Product ID</th><th>Condition</th><th>Quantity</th><th>Restock Level</th><th>Restock Amount</th><th>Description</th>';
+            table += '</tr></thead><tbody>';
+
+            let firstItem = "";
+            for (let i = 0; i < res.length; i++) {
+                let item = res[i];
+                table += `<tr id="row_${i}">
+                            <td>${item.id}</td>
+                            <td>${item.product_id}</td>
+                            <td>${item.condition}</td>
+                            <td>${item.quantity}</td>
+                            <td>${item.restock_level}</td>
+                            <td>${item.restock_amount}</td>
+                            <td>${item.description}</td>
+                        </tr>`;
+                if (i === 0) {
+                    firstItem = item;
+                }
+            }
+
+            table += '</tbody></table>';
+            $("#search_results").append(table);
+
+            if (firstItem) {
+                update_form_data(firstItem);
+            }
+
+            flash_message("Success");
+        });
+
+        ajax.fail(function (res) {
+            clear_form_data();
+            flash_message(res.responseJSON?.message || "Server error!");
+        });
+    });
+
 });

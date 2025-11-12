@@ -14,3 +14,16 @@ Feature: Inventory Service UI
         When I visit the home page
         And I click the search button
         Then I should see a list of inventory items
+
+    Scenario: Filter inventory by condition and quantity
+        When I visit the home page
+        And I set the "Condition" filter to "NEW"
+        And I set the "Quantity Less Than" filter to "10"
+        And I click the search button
+        Then I should see only inventory items with condition "NEW" and quantity less than 10
+
+    Scenario: Filter inventory by restock status
+        When I visit the home page
+        And I set the "Restock Needed" filter to "Yes"
+        And I click the search button
+        Then I should see only inventory items that need restocking
