@@ -15,6 +15,22 @@ Feature: Inventory Service UI
         And I click the search button
         Then I should see a list of inventory items
 
+    Scenario: Create an inventory item
+        When I fill in the product ID with "12345"
+        And I select condition "NEW"
+        And I fill in quantity with "100"
+        And I click the create button
+        Then I should see "Success: Inventory item created!"
+
+    # Scenario: Update an inventory item
+    #     When I fill in the product ID with "99999"
+    #     And I select condition "NEW"
+    #     And I fill in quantity with "100"
+    #     And I click the create button
+    #     And I fill in quantity with "200"
+    #     And I click the update button
+    #     Then I should see "Success: Inventory item updated!"
+
     Scenario: Filter inventory by condition and quantity
         When I visit the home page
         And I set the "Condition" filter to "NEW"

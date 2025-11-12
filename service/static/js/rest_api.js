@@ -32,8 +32,6 @@ $(function () {
         $("#flash_message").append(message);
     }
 
-
-
     // ****************************************
     // CREATE an Inventory Item
     // ****************************************
@@ -88,7 +86,6 @@ $(function () {
             flash_message(res.responseJSON?.message || "Error: Failed to create inventory item!");
         });
     });
-
 
     // ****************************************
     // UPDATE an Inventory Item
@@ -152,7 +149,36 @@ $(function () {
         });
     });
 
-    
+    // ****************************************
+    // RETRIEVE AN INVENTORY ITEM
+    // ****************************************
+
+    $("#retrieve-btn").click(function () {
+        let item_id = $("#item_id").val();
+
+        if (!item_id) {
+            flash_message("Error: Please enter an Item ID");
+            return;
+        }
+
+        $("#flash_message").empty();
+
+        let ajax = $.ajax({
+            type: "GET",
+            url: `/inventory/${item_id}`,
+            contentType: "application/json"
+        });
+
+        ajax.done(function (res) {
+            update_form_data(res);
+            flash_message("Success");
+        });
+
+        ajax.fail(function (res) {
+            clear_form_data();
+            flash_message(res.responseJSON?.message || "Item not found!");
+        });
+    });    
 
     // ****************************************
     // LIST (Search for Inventory Items)
@@ -285,7 +311,7 @@ $(function () {
     // PLACEHOLDER BUTTONS (Not Implemented)
     // ****************************************
 
-    $("#create-btn, #update-btn, #delete-btn, #retrieve-btn, #restock-btn").click(function () {
+    $("#delete-btn, #restock-btn").click(function () {
         flash_message("⚠️ This function is not implemented yet.");
     });
 
