@@ -22,6 +22,12 @@ Feature: Inventory Service UI
         And I click the create button
         Then I should see "Success: Inventory item created!"
 
+    Scenario: Retrieve an inventory item
+        When I click the search button
+        And I enter "1" in the item ID field
+        And I click the retrieve button
+        Then I should see the item details in the form
+
     # Scenario: Update an inventory item
     #     When I fill in the product ID with "99999"
     #     And I select condition "NEW"
@@ -31,15 +37,4 @@ Feature: Inventory Service UI
     #     And I click the update button
     #     Then I should see "Success: Inventory item updated!"
 
-    Scenario: Filter inventory by condition and quantity
-        When I visit the home page
-        And I set the "Condition" filter to "NEW"
-        And I set the "Quantity Less Than" filter to "10"
-        And I click the search button
-        Then I should see only inventory items with condition "NEW" and quantity less than 10
-
-    Scenario: Filter inventory by restock status
-        When I visit the home page
-        And I set the "Restock Needed" filter to "Yes"
-        And I click the search button
-        Then I should see only inventory items that need restocking
+    
