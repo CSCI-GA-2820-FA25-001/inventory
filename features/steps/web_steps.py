@@ -131,6 +131,17 @@ def step_impl(context, quantity: str) -> None:
     element.clear()
     element.send_keys(quantity)
 
+@then('I should see only inventory items with condition "{condition}" and quantity less than {quantity:d}')
+def step_impl(context, condition, quantity):
+    table = context.driver.find_element(By.ID, "search_results")
+    rows = table.find_elements(By.TAG_NAME, "tr")
+    for row in rows[1:]: 
+        cells = row.find_elements(By.TAG_NAME, "td")
+        item_condition = cells[2].text.strip()    
+        item_quantity = int(cells[3].text.strip())  
+        assert item_condition == condition, f"Expected {condition} but got {item_condition}"
+        assert item_quantity < quantity, f"Expected quantity < {quantity} but got {item_quantity}"
+
 @when('I set the "Restock Needed" filter to "{status}"')
 def step_impl(context, status: str) -> None:
     button_id = "restock-btn"
@@ -139,3 +150,12 @@ def step_impl(context, status: str) -> None:
     if status.strip().lower() == "yes":
         button.click()
 
+@then('I should see only inventory items that need restocking')
+def step_impl(context):
+    table = context.driver.find_element(By.ID, "search_results")
+    rows = table.find_elements(By.TAG_NAME, "tr")
+    for row in rows[1:]: 
+        cells = row.find_elements(By.TAG_NAME, "td")
+        quantity = int(cells[3].text.strip())       
+        restock_level = int(cells[4].text.strip())  
+        assert quantity < restock_level, f"Expected quantity < restock level but got quantity {quantity} and restock level {restock_level}"
