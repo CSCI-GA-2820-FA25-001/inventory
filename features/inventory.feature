@@ -27,17 +27,12 @@ Feature: Inventory Service UI
         And I select condition "NEW"
         And I fill in quantity with "100"
         And I click the create button
-        And I enter "1" in the item ID field
-        And I click the retrieve button
         And I fill in quantity with "200"
         And I click the update button
         Then I should see "Success: Inventory item updated!"
 
     Scenario: Retrieve an inventory item
-        When I fill in the product ID with "88888"
-        And I select condition "USED"
-        And I fill in quantity with "50"
-        And I click the create button
+        When I click the search button
         And I enter "1" in the item ID field
         And I click the retrieve button
         Then I should see the item details in the form
