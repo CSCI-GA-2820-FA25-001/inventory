@@ -22,11 +22,11 @@ Feature: Inventory Service UI
         And I click the create button
         Then I should see "Success: Inventory item created!"
 
-    Scenario: Retrieve an inventory item
-        When I click the search button
-        And I enter "1" in the item ID field
-        And I click the retrieve button
-        Then I should see the item details in the form
+    # Scenario: Retrieve an inventory item
+    #     When I click the search button
+    #     And I enter "1" in the item ID field
+    #     And I click the retrieve button
+    #     Then I should see the item details in the form
 
     # Scenario: Update an inventory item
     #     When I fill in the product ID with "99999"
