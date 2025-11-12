@@ -37,4 +37,10 @@ Feature: Inventory Service UI
     #     And I click the update button
     #     Then I should see "Success: Inventory item updated!"
 
-    
+    # Scenario: Restock an inventory item
+    #     Given the inventory service is running
+    #     When I visit the home page
+    #     And I click the search button
+    #     And I click the "Restock" action button for item with ID "123"
+    #     Then I should see a success message "Success: Item restocked!"
+    #     And the item with ID "123" should have its quantity updated
