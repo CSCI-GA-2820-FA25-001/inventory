@@ -1,10 +1,14 @@
+# pylint: disable=function-redefined, missing-function-docstring
+# flake8: noqa
+
 """
 Web Steps for Inventory BDD Tests
 """
 
 from behave import given, when, then
 from selenium.webdriver.common.by import By
-
+from selenium.webdriver.support.ui import Select, WebDriverWait
+from selenium.webdriver.support import expected_conditions
 
 @given("the inventory service is running")
 def step_impl(context):
@@ -111,3 +115,9 @@ def step_impl(context):
     product_id = context.driver.find_element(By.ID, "product_id").get_attribute("value")
     assert product_id, "Product ID should be populated"
     assert "Success" in context.driver.page_source
+
+@when('I set the "Condition" filter to "{condition}"')
+def step_impl(context, condition: str) -> None:
+    element = context.driver.find_element(By.ID, "condition")
+    select = Select(element)
+    select.select_by_visible_text(condition)
