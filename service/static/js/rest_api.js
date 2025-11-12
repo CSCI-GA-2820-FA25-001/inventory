@@ -318,7 +318,6 @@ $(function () {
             url: `/inventory/${itemId}/restock`,
             contentType: "application/json"
         }).done(function(res) {
-            // Refresh item display (could call your existing search function or update row)
             flash_message("Success: Item restocked!");
         }).fail(function(res) {
             flash_message("Error: Could not restock item!");
