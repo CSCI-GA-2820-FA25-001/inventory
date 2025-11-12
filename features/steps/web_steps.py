@@ -125,18 +125,17 @@ def step_impl(context, condition: str) -> None:
 
 @when('I set the "Quantity Less Than" filter to "{quantity}"')
 def step_impl(context, quantity: str) -> None:
-    element_id = "quantity_lt"
+    element_id = "quantity"  
     wait = WebDriverWait(context.driver, context.wait_seconds)
     element = wait.until(expected_conditions.presence_of_element_located((By.ID, element_id)))
     element.clear()
     element.send_keys(quantity)
 
-
 @when('I set the "Restock Needed" filter to "{status}"')
 def step_impl(context, status: str) -> None:
-    element_id = "restock_needed"
+    button_id = "restock-btn"
     wait = WebDriverWait(context.driver, context.wait_seconds)
-    checkbox = wait.until(expected_conditions.element_to_be_clickable((By.ID, element_id)))
-    should_check = status.strip().lower() == "yes"
-    if checkbox.is_selected() != should_check:
-        checkbox.click()
+    button = wait.until(expected_conditions.element_to_be_clickable((By.ID, button_id)))
+    if status.strip().lower() == "yes":
+        button.click()
+
