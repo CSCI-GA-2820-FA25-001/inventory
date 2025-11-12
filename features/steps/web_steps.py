@@ -44,3 +44,70 @@ def step_impl(context):
     rows = table.find_elements(By.TAG_NAME, "tr")
     assert len(rows) > 1, "Expected at least one inventory row (plus header)"
     assert "Success" in context.driver.page_source or "✅" in context.driver.page_source
+
+
+@when('I fill in the product ID with "{text}"')
+def step_impl(context, text):
+    context.driver.find_element(By.ID, "product_id").send_keys(text)
+
+
+@when('I select condition "{condition}"')
+def step_impl(context, condition):
+    from selenium.webdriver.support.ui import Select
+
+    select = Select(context.driver.find_element(By.ID, "condition"))
+    select.select_by_value(condition)
+
+
+@when('I fill in quantity with "{text}"')
+def step_impl(context, text):
+    field = context.driver.find_element(By.ID, "quantity")
+    field.clear()
+    field.send_keys(text)
+
+
+@when("I click the create button")
+def step_impl(context):
+    context.driver.find_element(By.ID, "create-btn").click()
+    import time
+
+    time.sleep(2)
+
+
+@when("I click the update button")
+def step_impl(context):
+    context.driver.find_element(By.ID, "update-btn").click()
+    import time
+
+    time.sleep(2)
+
+
+@then('I should see "{text}"')
+def step_impl(context, text):
+    import time
+
+    time.sleep(1)  # Wait for flash message
+    assert text in context.driver.page_source, f"Expected '{text}' not found in page"
+
+
+@when('I enter "{text}" in the item ID field')
+def step_impl(context, text):
+    field = context.driver.find_element(By.ID, "item_id")
+    field.clear()
+    field.send_keys(text)
+
+
+@when("I click the retrieve button")
+def step_impl(context):
+    button = context.driver.find_element(By.ID, "retrieve-btn")
+    button.click()
+    import time
+
+    time.sleep(2)
+
+
+@then("I should see the item details in the form")
+def step_impl(context):
+    product_id = context.driver.find_element(By.ID, "product_id").get_attribute("value")
+    assert product_id, "Product ID should be populated"
+    assert "Success" in context.driver.page_source
