@@ -71,7 +71,7 @@ def step_impl(context):
     context.driver.find_element(By.ID, "create-btn").click()
     import time
 
-    time.sleep(1)
+    time.sleep(2)
 
 
 @when("I click the update button")
@@ -79,12 +79,15 @@ def step_impl(context):
     context.driver.find_element(By.ID, "update-btn").click()
     import time
 
-    time.sleep(1)
+    time.sleep(2)
 
 
 @then('I should see "{text}"')
 def step_impl(context, text):
-    assert text in context.driver.page_source
+    import time
+
+    time.sleep(1)  # Wait for flash message
+    assert text in context.driver.page_source, f"Expected '{text}' not found in page"
 
 
 @when('I enter "{text}" in the item ID field')
@@ -100,7 +103,7 @@ def step_impl(context):
     button.click()
     import time
 
-    time.sleep(1)
+    time.sleep(2)
 
 
 @then("I should see the item details in the form")
