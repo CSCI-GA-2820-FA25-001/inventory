@@ -1,0 +1,282 @@
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: echo
+spec:
+  description: This task simply echoes a message
+  params:
+    - name: message
+      description: The message to echo
+      type: string
+  steps:
+    - name: echo-message
+      image: alpine:3
+      command: [/bin/echo]
+      args: ["$(params.message)"]
+
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: checkout
+spec:
+  description: Clone the code repository to the workspace
+  workspaces:
+    - name: output
+      description: The git repo will be cloned onto the volume backing this workspace
+  params:
+    - name: url
+      description: git url to clone
+      type: string
+    - name: revision
+      description: git revision to checkout (branch, tag, sha, ref…)
+      type: string
+      default: main
+    - name: refspec
+      description: (optional) git refspec to fetch before checking out revision
+      type: string
+      default: ""
+    - name: submodules
+      description: defines if the resource should initialize and fetch the submodules
+      type: string
+      default: "true"
+    - name: depth
+      description: performs a shallow clone where only the most recent commit(s) will be fetched
+      type: string
+      default: "1"
+    - name: sslVerify
+      description: defines if http.sslVerify should be set to true or false in the global git config
+      type: string
+      default: "true"
+    - name: subdirectory
+      description: subdirectory inside the "output" workspace to clone the git repo into
+      type: string
+      default: ""
+    - name: deleteExisting
+      description: clean out the contents of the repo's destination directory (if it already exists) before trying to clone the repo there
+      type: string
+      default: "true"
+  results:
+    - name: commit
+      description: The precise commit SHA that was fetched by this Task
+  steps:
+    - name: clone
+      image: gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/git-init:latest
+      script: |
+        #!/bin/sh
+        set -eu -o pipefail
+
+        if [[ "$(params.deleteExisting)" == "true" ]] ; then
+          cleandir() {
+            if [[ -d "$1" ]] ; then
+              rm -rf "$1"
+            fi
+          }
+          cleandir "$(workspaces.output.path)/$(params.subdirectory)"
+        fi
+
+        CHECKOUT_DIR="$(workspaces.output.path)/$(params.subdirectory)"
+
+        /ko-app/git-init \
+          -url "$(params.url)" \
+          -revision "$(params.revision)" \
+          -refspec "$(params.refspec)" \
+          -path "$CHECKOUT_DIR" \
+          -sslVerify="$(params.sslVerify)" \
+          -submodules="$(params.submodules)" \
+          -depth "$(params.depth)"
+        
+        cd "$CHECKOUT_DIR"
+        RESULT_SHA="$(git rev-parse HEAD)"
+        echo -n "$RESULT_SHA" > $(results.commit.path)
+
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: lint
+spec:
+  description: Run linting checks on the Python code
+  workspaces:
+    - name: source
+      description: The workspace containing the source code
+  params:
+    - name: args
+      description: Arguments to pass to the linter
+      type: array
+      default: ["run"]
+    - name: image
+      description: The image providing the linting tools
+      type: string
+      default: "python:3.11-slim"
+  steps:
+    - name: lint
+      image: $(params.image)
+      workingDir: $(workspaces.source.path)
+      script: |
+        #!/bin/bash
+        set -e
+        
+        echo "Installing linting dependencies..."
+        pip install --upgrade pip
+        pip install flake8 pylint
+        
+        echo "Running flake8..."
+        flake8 service tests --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 service tests --count --max-complexity=10 --max-line-length=127 --statistics
+        
+        echo "Running pylint..."
+        pylint service tests --max-line-length=127
+
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: tests
+spec:
+  description: Run unit tests on the Python code
+  workspaces:
+    - name: source
+      description: The workspace containing the source code
+  params:
+    - name: args
+      description: Arguments to pass to pytest
+      type: array
+      default: ["run"]
+    - name: image
+      description: The image providing the testing tools
+      type: string
+      default: "python:3.11-slim"
+    - name: database_uri
+      description: Database URI for testing
+      type: string
+      default: "postgresql+psycopg://postgres:postgres@localhost:5432/testdb"
+  steps:
+    - name: tests
+      image: $(params.image)
+      workingDir: $(workspaces.source.path)
+      env:
+        - name: DATABASE_URI
+          value: $(params.database_uri)
+      script: |
+        #!/bin/bash
+        set -e
+        
+        echo "Installing dependencies..."
+        apt-get update && apt-get install -y gcc libpq-dev postgresql-client
+        pip install --upgrade pip pipenv
+        pipenv install --dev --system
+        
+        echo "Running unit tests with coverage..."
+        export RETRY_COUNT=1
+        pytest --pspec --cov=service --cov-fail-under=95 --disable-warnings
+        
+        echo "Tests completed successfully!"
+
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: build
+spec:
+  description: Build a container image using buildah
+  workspaces:
+    - name: source
+      description: The workspace containing the source code and Dockerfile
+  params:
+    - name: IMAGE
+      description: Reference of the image buildah will produce
+      type: string
+    - name: DOCKERFILE
+      description: Path to the Dockerfile to build
+      type: string
+      default: ./Dockerfile
+    - name: CONTEXT
+      description: Path to the directory to use as context
+      type: string
+      default: .
+    - name: TLSVERIFY
+      description: Verify the TLS on the registry endpoint
+      type: string
+      default: "false"
+    - name: FORMAT
+      description: The format of the built container, oci or docker
+      type: string
+      default: "oci"
+  results:
+    - name: IMAGE_DIGEST
+      description: Digest of the image just built
+  steps:
+    - name: build
+      image: quay.io/buildah/stable:latest
+      workingDir: $(workspaces.source.path)
+      securityContext:
+        privileged: true
+      script: |
+        #!/bin/bash
+        set -e
+        
+        echo "Building image $(params.IMAGE)..."
+        buildah --storage-driver=vfs bud \
+          --format=$(params.FORMAT) \
+          --tls-verify=$(params.TLSVERIFY) \
+          --no-cache \
+          -f $(params.DOCKERFILE) \
+          -t $(params.IMAGE) \
+          $(params.CONTEXT)
+        
+        echo "Pushing image to registry..."
+        buildah --storage-driver=vfs push \
+          --tls-verify=$(params.TLSVERIFY) \
+          --digestfile /tmp/image-digest \
+          $(params.IMAGE) \
+          docker://$(params.IMAGE)
+        
+        cat /tmp/image-digest | tee $(results.IMAGE_DIGEST.path)
+        echo "Image pushed successfully!"
+      volumeMounts:
+        - name: varlibcontainers
+          mountPath: /var/lib/containers
+  volumes:
+    - name: varlibcontainers
+      emptyDir: {}
+
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: deploy
+spec:
+  description: Deploy the application to OpenShift
+  workspaces:
+    - name: source
+      description: The workspace containing the k8s manifests
+  params:
+    - name: IMAGE
+      description: The image reference to deploy
+      type: string
+    - name: MANIFEST_DIR
+      description: Directory containing kubernetes manifests
+      type: string
+      default: "k8s"
+  steps:
+    - name: deploy
+      image: quay.io/openshift/origin-cli:latest
+      workingDir: $(workspaces.source.path)
+      script: |
+        #!/bin/bash
+        set -e
+        
+        echo "Updating deployment with image $(params.IMAGE)..."
+        
+        # Update the image in the deployment
+        kubectl set image deployment/inventory inventory=$(params.IMAGE) || true
+        
+        echo "Applying Kubernetes manifests from $(params.MANIFEST_DIR)..."
+        kubectl apply -f $(params.MANIFEST_DIR)/
+        
+        echo "Waiting for deployment to complete..."
+        kubectl rollout status deployment/inventory --timeout=5m
+        
+        echo "Deployment completed successfully!"
