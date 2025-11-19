@@ -367,27 +367,6 @@ class InventoryCollection(Resource):
         app.logger.info("Inventory item with ID [%s] created.", item.id)
         return item.serialize(), status.HTTP_201_CREATED, {"Location": location_url}
 
-    # ------------------------------------------------------------------
-    # DELETE ALL INVENTORY ITEMS (for testing only)
-    # ------------------------------------------------------------------
-    @api.doc("delete_all_inventory")
-    @api.response(204, "All Inventory deleted")
-    def delete(self):
-        """
-        Delete all Inventory
-
-        This endpoint will delete all Inventory only if the system is under test
-        """
-        app.logger.info("Request to Delete all inventory...")
-        if "TESTING" in app.config and app.config["TESTING"]:
-            num_deleted = Inventory.query.delete()
-            db.session.commit()
-            app.logger.info("Removed %d Inventory items from the database", num_deleted)
-        else:
-            app.logger.warning("Request to clear database while system not under test")
-
-        return "", status.HTTP_204_NO_CONTENT
-
 
 ######################################################################
 # RESTOCK AN INVENTORY ITEM
