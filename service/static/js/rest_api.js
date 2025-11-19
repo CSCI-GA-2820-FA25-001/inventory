@@ -72,7 +72,7 @@ $(function () {
         
         let ajax = $.ajax({
             type: "POST",
-            url: "/inventory",
+            url: "/api/inventory",
             contentType: "application/json",
             data: JSON.stringify(data),
         });
@@ -134,7 +134,7 @@ $(function () {
     
         let ajax = $.ajax({
             type: "PUT",
-            url: `/inventory/${item_id}`,
+            url: `/api/inventory/${item_id}`,
             contentType: "application/json",
             data: JSON.stringify(data)
         });
@@ -165,7 +165,7 @@ $(function () {
 
         let ajax = $.ajax({
             type: "GET",
-            url: `/inventory/${item_id}`,
+            url: `/api/inventory/${item_id}`,
             contentType: "application/json"
         });
 
@@ -208,7 +208,7 @@ $(function () {
 
         let ajax = $.ajax({
             type: "GET",
-            url: `/inventory?${queryString}`,
+            url: `/api/inventory?${queryString}`,
             contentType: "application/json",
             data: ""
         });
@@ -280,7 +280,7 @@ $(function () {
     
         let ajax = $.ajax({
             type: "DELETE",
-            url: `/inventory/${item_id}`,
+            url: `/api/inventory/${item_id}`,
             contentType: "application/json",
             data: ''
         });
@@ -315,7 +315,7 @@ $(function () {
         let itemId = $(this).data("id");
         $.ajax({
             type: "POST",
-            url: `/inventory/${itemId}/restock`,
+            url: `/api/inventory/${itemId}/restock`,
             contentType: "application/json"
         }).done(function(res) {
             flash_message("Success: Item restocked!");
@@ -361,7 +361,7 @@ $(function () {
 
         let ajax = $.ajax({
             type: "GET",
-            url: `/inventory?${queryString}`,
+            url: `/api/inventory?${queryString}`,
             contentType: "application/json",
             data: ""
         });

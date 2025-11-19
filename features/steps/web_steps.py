@@ -4,11 +4,12 @@
 """
 Web Steps for Inventory BDD Tests
 """
-
+import time
 from behave import given, when, then
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import Select, WebDriverWait
 from selenium.webdriver.support import expected_conditions
+
 
 @given("the inventory service is running")
 def step_impl(context):
@@ -57,8 +58,6 @@ def step_impl(context, text):
 
 @when('I select condition "{condition}"')
 def step_impl(context, condition):
-    from selenium.webdriver.support.ui import Select
-
     select = Select(context.driver.find_element(By.ID, "condition"))
     select.select_by_value(condition)
 
@@ -73,23 +72,17 @@ def step_impl(context, text):
 @when("I click the create button")
 def step_impl(context):
     context.driver.find_element(By.ID, "create-btn").click()
-    import time
-
     time.sleep(2)
 
 
 @when("I click the update button")
 def step_impl(context):
     context.driver.find_element(By.ID, "update-btn").click()
-    import time
-
     time.sleep(2)
 
 
 @then('I should see "{text}"')
 def step_impl(context, text):
-    import time
-
     time.sleep(1)  # Wait for flash message
     assert text in context.driver.page_source, f"Expected '{text}' not found in page"
 
@@ -105,8 +98,6 @@ def step_impl(context, text):
 def step_impl(context):
     button = context.driver.find_element(By.ID, "retrieve-btn")
     button.click()
-    import time
-
     time.sleep(2)
 
 
@@ -116,26 +107,40 @@ def step_impl(context):
     assert product_id, "Product ID should be populated"
     assert "Success" in context.driver.page_source
 
+
 @when('I set the "Condition" filter to "{condition}"')
 def step_impl(context, condition: str) -> None:
     element = context.driver.find_element(By.ID, "condition")
     select = Select(element)
     select.select_by_visible_text(condition)
 
+
 when('I click the "Restock" action button for item with ID "{item_id}"')
+
+
 def step_impl(context, item_id):
-    button = context.driver.find_element(By.CSS_SELECTOR, f'button.restock-btn[data-id="{item_id}"]')
+    button = context.driver.find_element(
+        By.CSS_SELECTOR, f'button.restock-btn[data-id="{item_id}"]'
+    )
     button.click()
+
 
 @then('I should see a success message "{message}"')
 def step_impl(context, message):
     wait = WebDriverWait(context.driver, context.wait_seconds)
-    flash_element = wait.until(expected_conditions.visibility_of_element_located((By.ID, "flash_message")))
-    assert message in flash_element.text, f"Expected success message '{message}', but got '{flash_element.text}'"
+    flash_element = wait.until(
+        expected_conditions.visibility_of_element_located((By.ID, "flash_message"))
+    )
+    assert (
+        message in flash_element.text
+    ), f"Expected success message '{message}', but got '{flash_element.text}'"
+
 
 @then('the item with ID "{item_id}" should have its quantity updated')
 def step_impl(context, item_id):
     row = context.driver.find_element(By.ID, f"row_{item_id}")
-    quantity_cell = row.find_elements(By.TAG_NAME, "td")[3]  
+    quantity_cell = row.find_elements(By.TAG_NAME, "td")[3]
     new_quantity = int(quantity_cell.text)
-    assert new_quantity > 0, f"Expected updated quantity to be > 0 but got {new_quantity}"
+    assert (
+        new_quantity > 0
+    ), f"Expected updated quantity to be > 0 but got {new_quantity}"
