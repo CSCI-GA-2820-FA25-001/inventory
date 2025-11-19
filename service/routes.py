@@ -21,7 +21,7 @@ This service implements a REST API that allows you to Create, Read, Update
 and Delete YourResourceModel
 """
 
-from flask import jsonify, request, abort
+from flask import jsonify, request
 from flask import current_app as app  # Import Flask application
 from flask_restx import Api, Resource, fields, reqparse
 from service.models import Inventory
