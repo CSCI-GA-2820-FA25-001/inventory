@@ -15,10 +15,10 @@
 ######################################################################
 
 """
-YourResourceModel Service
+Inventory Service
 
 This service implements a REST API that allows you to Create, Read, Update
-and Delete YourResourceModel
+and Delete Inventory items
 """
 
 from flask import jsonify, request
@@ -35,9 +35,9 @@ api = Api(
     app,
     version="1.0.0",
     title="Inventory REST API Service",
-    description="This is a sample server Inventory service.",
+    description="A RESTful inventory management service for tracking product stock levels, conditions, and automated restocking",
     default="inventory",
-    default_label="Inventory operations",
+    default_label="Inventory Operations",
     doc="/apidocs",  # default also could use doc='/apidocs/'
     prefix="/api",
 )
@@ -66,19 +66,34 @@ def health_check():
 create_model = api.model(
     "InventoryCreate",
     {
-        "product_id": fields.Integer(required=True, description="The product ID"),
+        "product_id": fields.Integer(
+            required=True, description="Unique product identifier", example=12345
+        ),
         "condition": fields.String(
             required=True,
             enum=[c.name for c in Condition],  # NEW, USED, OPEN_BOX only
             description="The condition of the Inventory item (e.g., NEW, USED, OPEN_BOX)",
+            example="NEW",
         ),
-        "quantity": fields.Integer(required=True, description="Current quantity"),
+        "quantity": fields.Integer(
+            required=True, description="Current stock quantity", example=100, min=0
+        ),
         "restock_amount": fields.Integer(
-            required=True, description="Amount to restock by"
+            required=True,
+            description="Quantity to add during restock operations",
+            example=50,
+            min=0,
         ),
-        "restock_level": fields.Integer(required=True, description="Restock threshold"),
+        "restock_level": fields.Integer(
+            required=True,
+            description="Minimum quantity threshold before restocking is recommended",
+            example=20,
+            min=0,
+        ),
         "description": fields.String(
-            required=False, description="Item description"
+            required=False,
+            description="Product description",
+            example="Premium wireless headphones with active noise cancellation",
         ),  # nullable=True
     },
 )
@@ -88,7 +103,8 @@ inventory_model = api.inherit(
     create_model,
     {
         "id": fields.Integer(
-            readOnly=True, description="The unique id assigned internally by service"
+            readOnly=True,
+            description="Unique inventory record identifier (auto-generated)",
         ),
     },
 )
@@ -96,10 +112,14 @@ inventory_model = api.inherit(
 # query string arguments
 inventory_args = reqparse.RequestParser()
 inventory_args.add_argument(
-    "product_id", type=int, location="args", required=False, help="Filter by product_id"
+    "product_id", type=int, location="args", required=False, help="Filter by product ID"
 )
 inventory_args.add_argument(
-    "condition", type=str, location="args", required=False, help="Filter by condition"
+    "condition",
+    type=str,
+    location="args",
+    required=False,
+    help="Filter by condition (NEW, USED, OPEN_BOX)",
 )
 inventory_args.add_argument(
     "quantity",
@@ -113,42 +133,42 @@ inventory_args.add_argument(
     type=int,
     location="args",
     required=False,
-    help="Filter by quantity less than",
+    help="Filter by quantity less than specified value",
 )
 inventory_args.add_argument(
     "quantity_gt",
     type=int,
     location="args",
     required=False,
-    help="Filter by quantity greater than",
+    help="Filter by quantity greater than specified value",
 )
 inventory_args.add_argument(
     "restock_level",
     type=int,
     location="args",
     required=False,
-    help="Filter by exact restock_level",
+    help="Filter by exact restock level",
 )
 inventory_args.add_argument(
     "restock_lt",
     type=int,
     location="args",
     required=False,
-    help="Filter by restock_level less than",
+    help="Filter by restock level less than specified value",
 )
 inventory_args.add_argument(
     "restock_gt",
     type=int,
     location="args",
     required=False,
-    help="Filter by restock_level greater than",
+    help="Filter by restock level greater than specified value",
 )
 inventory_args.add_argument(
     "query",
     type=str,
     location="args",
     required=False,
-    help="Free-text search in description",
+    help="Search descriptions (case-insensitive partial match)",
 )
 
 ######################################################################
@@ -160,28 +180,31 @@ inventory_args.add_argument(
 #  PATH: /inventory/{id}
 ######################################################################
 @api.route("/inventory/<int:item_id>")
-@api.param("item_id", "The Inventory identifier")
+@api.param("item_id", "The inventory item identifier")
 class InventoryResource(Resource):
     """
     InventoryResource class
 
+    Manages individual inventory items
     Allows the manipulation of a single Inventory item
     GET /inventory{id} - Returns an Inventory with the id
     PUT /inventory{id} - Update an Inventory with the id
     DELETE /inventory{id} -  Deletes an Inventory with the id
+
     """
 
     # ------------------------------------------------------------------
     # RETRIEVE AN INVENTORY ITEM
     # ------------------------------------------------------------------
-    @api.doc("get_inventory")
+    @api.doc("get_inventory_item")
+    @api.response(200, "Success")
     @api.response(404, "Inventory item not found")
     @api.marshal_with(inventory_model)
     def get(self, item_id):
         """
-        Retrieve a single Inventory Item
+        Retrieve an inventory item
 
-        This endpoint will return an Inventory Item based on its id
+        Returns detailed information for a single inventory item including stock levels and restock parameters.
         """
         app.logger.info("Request to Retrieve an inventory item with id [%s]", item_id)
 
@@ -194,22 +217,23 @@ class InventoryResource(Resource):
             )
 
         app.logger.info("Returning inventory item: %s", item.product_id)
-        return item.serialize(), status.HTTP_200_OK  # serialize()로 일관성
+        return item.serialize(), status.HTTP_200_OK
 
     # ------------------------------------------------------------------
     # UPDATE AN EXISTING INVENTORY ITEM
     # ------------------------------------------------------------------
-    @api.doc("update_inventory")
+    @api.doc("update_inventory_item")
+    @api.response(200, "Inventory item updated successfully")
     @api.response(404, "Inventory item not found")
-    @api.response(400, "The posted Inventory data was not valid")
-    @api.response(415, "Content-Type must be application/json")
+    @api.response(400, "Invalid request data")
+    @api.response(415, "Unsupported media type")
     @api.expect(inventory_model)
     @api.marshal_with(inventory_model)
     def put(self, item_id):
         """
-        Update an Inventory Item
+        Update an inventory item
 
-        This endpoint will update an Inventory item based the body that is posted
+        Updates all fields of an existing inventory item. All required fields must be included in the request body.
         """
         app.logger.info("Request to update Inventory item with id [%s]", item_id)
 
@@ -229,9 +253,7 @@ class InventoryResource(Resource):
 
         app.logger.debug("Payload = %s", api.payload)
         data = api.payload
-        item.deserialize(
-            data
-        )  # deserialize에서 condition upper() 처리 추가 필요 (아래 클래스 메서드 참고)
+        item.deserialize(data)
         item.id = item_id
         item.update()
 
@@ -240,13 +262,13 @@ class InventoryResource(Resource):
     # ------------------------------------------------------------------
     # DELETE AN INVENTORY ITEM
     # ------------------------------------------------------------------
-    @api.doc("delete_inventory")
-    @api.response(204, "Inventory item deleted")
+    @api.doc("delete_inventory_item")
+    @api.response(204, "Inventory item deleted successfully")
     def delete(self, item_id):
         """
-        Delete an Inventory Item
+        Delete an inventory item
 
-        This endpoint will delete an Inventory item based the id specified in the path
+        Permanently removes an inventory item from the system. This operation is idempotent.
         """
         app.logger.info("Request to Delete an inventory item with id [%s]", item_id)
 
@@ -265,17 +287,25 @@ class InventoryResource(Resource):
 ######################################################################
 @api.route("/inventory", strict_slashes=False)
 class InventoryCollection(Resource):
-    """Handles all interactions with collections of Inventory items"""
+    """
+    Inventory Collection
+
+    Manages the collection of all inventory items
+    """
 
     # ------------------------------------------------------------------
     # LIST ALL INVENTORY ITEMS
     # ------------------------------------------------------------------
-    @api.doc("list_inventory")
+    @api.doc("list_inventory_items")
     @api.expect(inventory_args, validate=True)
+    @api.response(200, "Success")
     @api.marshal_list_with(inventory_model)
     def get(self):
-        """Returns all of the Inventory Items, supporting multi-filter queries."""
+        """
+        List inventory items
 
+        Returns all inventory items. Supports filtering by product_id, condition, quantity ranges, restock levels, and description search. Multiple filters can be combined.
+        """
         app.logger.info("Request for inventory list")
 
         # Query parameters
@@ -295,9 +325,7 @@ class InventoryCollection(Resource):
 
         if condition:
             try:
-                q = q.filter(
-                    Inventory.condition == Condition[condition.upper()]
-                )  # upper() 유지
+                q = q.filter(Inventory.condition == Condition[condition.upper()])
             except KeyError:
                 app.logger.warning("Invalid condition: %s", condition)
                 return [], status.HTTP_200_OK
@@ -322,9 +350,7 @@ class InventoryCollection(Resource):
 
         # Execute final query
         items = q.all()
-        results = [
-            item.serialize() for item in items
-        ]  # marshal 전에 serialize 호출로 일관성
+        results = [item.serialize() for item in items]
 
         app.logger.info("Returning %d filtered inventory items", len(results))
         return results, status.HTTP_200_OK
@@ -332,21 +358,24 @@ class InventoryCollection(Resource):
     # ------------------------------------------------------------------
     # ADD A NEW INVENTORY ITEM
     # ------------------------------------------------------------------
-    @api.doc("create_inventory")
-    @api.response(400, "The posted data was not valid")
+    @api.doc("create_inventory_item")
+    @api.response(201, "Inventory item created successfully")
+    @api.response(400, "Invalid request data")
     @api.response(409, "Inventory item already exists")
     @api.expect(create_model)
     @api.marshal_with(inventory_model, code=201)
     def post(self):
         """
-        Creates an Inventory Item
-        This endpoint will create an Inventory item based the data in the body that is posted
+        Create an inventory item
+
+        Creates a new inventory item. The product_id must be unique. Returns the created item with an auto-generated id.
         """
         app.logger.info("Request to create an Inventory item")
         app.logger.debug("Payload = %s", api.payload)
         data = api.payload
 
         item = Inventory()
+
         # condition upper() for consistency with query
         if "condition" in data:
             data["condition"] = data["condition"].upper()
@@ -373,18 +402,23 @@ class InventoryCollection(Resource):
 # PATH: /inventory/{id}/restock
 ######################################################################
 @api.route("/inventory/<int:item_id>/restock")
-@api.param("item_id", "The Inventory identifier")
+@api.param("item_id", "The inventory item identifier")
 class RestockResource(Resource):
-    """Restock actions on an Inventory item"""
+    """
+    Restock Operations
 
-    @api.doc("restock_inventory")
+    Performs restocking actions on inventory items
+    """
+
+    @api.doc("restock_inventory_item")
+    @api.response(200, "Inventory item restocked successfully")
     @api.response(404, "Inventory item not found")
     @api.marshal_with(inventory_model)
     def put(self, item_id):
         """
-        Restock an Inventory Item
+        Restock an inventory item
 
-        This endpoint will increase the quantity of an Inventory item by its restock_amount
+        Increases the inventory quantity by the predefined restock_amount. No request body required - the restock_amount is retrieved from the existing inventory record.
         """
         app.logger.info("Request to restock Inventory item with id [%s]", item_id)
 
