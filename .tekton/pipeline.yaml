@@ -1,0 +1,87 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: cd-pipeline
+spec:
+  workspaces:
+    - name: pipeline-workspace
+      description: Shared workspace for all tasks
+  params:
+    - name: git-url
+      description: The URL of the git repository to clone
+      type: string
+    - name: git-ref
+      description: The branch or ref to checkout
+      type: string
+      default: master
+    - name: image-name
+      description: The name of the image to build and deploy
+      type: string
+    - name: app-name
+      description: The name of the application to deploy
+      type: string
+  tasks:
+    - name: clone
+      taskRef:
+        name: checkout
+      params:
+        - name: url
+          value: $(params.git-url)
+        - name: revision
+          value: $(params.git-ref)
+      workspaces:
+        - name: output
+          workspace: pipeline-workspace
+    - name: lint
+      taskRef:
+        name: lint
+      runAfter:
+        - clone
+      workspaces:
+        - name: source
+          workspace: pipeline-workspace
+      params:
+        - name: path
+          value: service
+    - name: test
+      taskRef:
+        name: tests
+      runAfter:
+        - clone
+      workspaces:
+        - name: source
+          workspace: pipeline-workspace
+    - name: build
+      taskRef:
+        name: build
+      runAfter:
+        - lint
+        - test
+      workspaces:
+        - name: source
+          workspace: pipeline-workspace
+      params:
+        - name: IMAGE
+          value: $(params.image-name)
+    - name: deploy
+      taskRef:
+        name: deploy
+      runAfter:
+        - build
+      workspaces:
+        - name: source
+          workspace: pipeline-workspace
+      params:
+        - name: IMAGE
+          value: $(params.image-name)
+    - name: bdd-test
+      taskRef:
+        name: behave
+      runAfter:
+        - deploy
+      workspaces:
+        - name: source
+          workspace: pipeline-workspace
+      params:
+        - name: base-url
+          value: $(params.app-name)
