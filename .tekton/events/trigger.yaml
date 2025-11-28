@@ -1,0 +1,29 @@
+apiVersion: triggers.tekton.dev/v1beta1
+kind: Trigger
+metadata:
+  name: cd-trigger
+spec:
+  serviceAccountName: pipeline
+  bindings:
+    - ref: cd-binding
+  template:
+    ref: cd-template
+  interceptors:
+    - ref:
+        name: "github"
+      params:
+        - name: "secretRef"
+          value:
+            secretName: github-secret
+            secretKey: secretToken
+        - name: "eventTypes"
+          value: ["push"]
+    - ref:
+        name: "cel"
+      params:
+        - name: "filter"
+          value: "body.ref == 'refs/heads/master'"
+        - name: "overlays"
+          value:
+            - key: branch_name
+              expression: "body.ref.split('/')[2]"
