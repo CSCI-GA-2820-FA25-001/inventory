@@ -1,0 +1,26 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: inventory
+  labels:
+    app: inventory
+  annotations:
+    description: "Route to expose inventory microservice externally"
+spec:
+  # Target service configuration
+  to:
+    kind: Service
+    name: inventory
+    weight: 100
+  
+  # Port configuration - matches service port
+  port:
+    targetPort: 8080
+  
+  # No wildcard routing
+  wildcardPolicy: None
+  
+  # TLS configuration (optional - uncomment for HTTPS)
+  # tls:
+  #   termination: edge
+  #   insecureEdgeTerminationPolicy: Redirect
