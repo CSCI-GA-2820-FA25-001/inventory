@@ -99,49 +99,6 @@ delete-ingress: ## Delete the Kubernetes Ingress
 	$(info Deleting ingress...)
 	kubectl delete ingress inventory-ingress || echo "Ingress may not exist"
 
-##@ OpenShift Route Management (for OpenShift clusters only)
-
-.PHONY: oc-create-route
-oc-create-route: ## Create OpenShift route (OpenShift only)
-	$(info Creating OpenShift route for inventory service...)
-	oc apply -f k8s/openshift-route.yaml
-
-.PHONY: oc-expose-route
-oc-expose-route: ## Expose service using oc expose command (OpenShift only)
-	$(info Exposing inventory service via route...)
-	oc expose service inventory || echo "Route may already exist"
-
-.PHONY: oc-get-route
-oc-get-route: ## Get the route URL (OpenShift only)
-	$(info Getting route URL...)
-	@echo "Route URL: http://$(oc get route inventory -o jsonpath='{.spec.host}')"
-
-.PHONY: oc-delete-route
-oc-delete-route: ## Delete the OpenShift route (OpenShift only)
-	$(info Deleting route...)
-	oc delete route inventory || echo "Route may not exist"
-
-.PHONY: oc-test-route
-oc-test-route: ## Test the route is working (OpenShift only)
-	$(info Testing route accessibility...)
-	@ROUTE_URL=http://$(oc get route inventory -o jsonpath='{.spec.host}'); \
-	echo "Testing $ROUTE_URL/health..."; \
-	curl -f -s $ROUTE_URL/health && echo " ✓ Health check passed" || echo " ✗ Health check failed"; \
-	echo "Testing $ROUTE_URL/api/inventory..."; \
-	curl -f -s $ROUTE_URL/api/inventory && echo " ✓ API endpoint passed" || echo " ✗ API endpoint failed"
-
-.PHONY: oc-deploy-all
-oc-deploy-all: ## Deploy everything including route to OpenShift (OpenShift only)
-	$(info Deploying all resources to OpenShift...)
-	oc apply -f k8s/postgres/
-	oc apply -f k8s/deployment.yaml
-	oc apply -f k8s/service.yaml
-	oc apply -f k8s/openshift-route.yaml
-	$(info Waiting for deployment to be ready...)
-	oc wait --for=condition=available --timeout=300s deployment/inventory
-	$(info Deployment complete!)
-	@make oc-get-route
-
 ############################################################
 # COMMANDS FOR BUILDING THE IMAGE
 ############################################################
