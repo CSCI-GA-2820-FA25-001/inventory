@@ -5,7 +5,6 @@ metadata:
   labels:
     app: inventory
   annotations:
-    # For k3d/Traefik
     traefik.ingress.kubernetes.io/router.entrypoints: web
 spec:
   rules:

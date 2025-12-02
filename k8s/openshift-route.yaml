@@ -19,8 +19,3 @@ spec:
   
   # No wildcard routing
   wildcardPolicy: None
-  
-  # TLS configuration (optional - uncomment for HTTPS)
-  # tls:
-  #   termination: edge
-  #   insecureEdgeTerminationPolicy: Redirect
