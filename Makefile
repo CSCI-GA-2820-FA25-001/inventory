@@ -73,6 +73,32 @@ deploy: ## Deploy the service on local Kubernetes
 	$(info Deploying service locally...)
 	kubectl apply -R -f k8s/
 
+##@ K3d OpenShift Ingress Management
+
+.PHONY: ingress
+ingress: ## Create Kubernetes Ingress (for k3d)
+	$(info Creating Kubernetes Ingress for inventory service...)
+	kubectl apply -f k8s/ingress.yaml
+
+.PHONY: get-ingress
+get-ingress: ## Get the ingress URL
+	$(info Getting ingress URL...)
+	@echo "Ingress URL: http://cluster-registry:8080"
+	@echo "Make sure to add '127.0.0.1 cluster-registry' to /etc/hosts"
+
+.PHONY: test-ingress
+test-ingress: ## Test the ingress is working
+	$(info Testing ingress accessibility...)
+	@echo "Testing http://cluster-registry:8080/health..."; \
+	curl -f -s http://cluster-registry:8080/health && echo " ✓ Health check passed" || echo " ✗ Health check failed"; \
+	echo "Testing http://cluster-registry:8080/api/inventory..."; \
+	curl -f -s http://cluster-registry:8080/api/inventory && echo " ✓ API endpoint passed" || echo " ✗ API endpoint failed"
+
+.PHONY: delete-ingress
+delete-ingress: ## Delete the Kubernetes Ingress
+	$(info Deleting ingress...)
+	kubectl delete ingress inventory-ingress || echo "Ingress may not exist"
+
 ############################################################
 # COMMANDS FOR BUILDING THE IMAGE
 ############################################################
