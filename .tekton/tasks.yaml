@@ -32,64 +32,34 @@ spec:
     - name: revision
       description: git revision to checkout (branch, tag, sha, ref…)
       type: string
-      default: main
-    - name: refspec
-      description: (optional) git refspec to fetch before checking out revision
-      type: string
-      default: ""
-    - name: submodules
-      description: defines if the resource should initialize and fetch the submodules
-      type: string
-      default: "true"
-    - name: depth
-      description: performs a shallow clone where only the most recent commit(s) will be fetched
-      type: string
-      default: "1"
-    - name: sslVerify
-      description: defines if http.sslVerify should be set to true or false in the global git config
-      type: string
-      default: "true"
-    - name: subdirectory
-      description: subdirectory inside the "output" workspace to clone the git repo into
-      type: string
-      default: ""
-    - name: deleteExisting
-      description: clean out the contents of the repo's destination directory (if it already exists) before trying to clone the repo there
-      type: string
-      default: "true"
-  results:
-    - name: commit
-      description: The precise commit SHA that was fetched by this Task
+      default: master
   steps:
     - name: clone
-      image: gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/git-init:latest
+      image: cluster-registry:5001/inventory:1.0
+      securityContext:
+        runAsUser: 0
+      workingDir: $(workspaces.output.path)
       script: |
-        #!/bin/sh
-        set -eu -o pipefail
-
-        if [[ "$(params.deleteExisting)" == "true" ]] ; then
-          cleandir() {
-            if [[ -d "$1" ]] ; then
-              rm -rf "$1"
-            fi
-          }
-          cleandir "$(workspaces.output.path)/$(params.subdirectory)"
-        fi
-
-        CHECKOUT_DIR="$(workspaces.output.path)/$(params.subdirectory)"
-
-        /ko-app/git-init \
-          -url "$(params.url)" \
-          -revision "$(params.revision)" \
-          -refspec "$(params.refspec)" \
-          -path "$CHECKOUT_DIR" \
-          -sslVerify="$(params.sslVerify)" \
-          -submodules="$(params.submodules)" \
-          -depth "$(params.depth)"
+        #!/bin/bash
+        set -e
         
-        cd "$CHECKOUT_DIR"
-        RESULT_SHA="$(git rev-parse HEAD)"
-        echo -n "$RESULT_SHA" > $(results.commit.path)
+        echo "Installing git..."
+        apt-get update -qq && apt-get install -y git
+        
+        echo "Cloning $(params.url) branch $(params.revision)..."
+        
+        # Clone to temp directory, then copy to workspace
+        TEMP_DIR="/tmp/repo-clone"
+        rm -rf $TEMP_DIR
+        
+        git clone --depth 1 --branch $(params.revision) $(params.url) $TEMP_DIR
+        
+        echo "Copying files to workspace..."
+        cp -rf $TEMP_DIR/. $(workspaces.output.path)/
+        
+        echo "Clone completed successfully!"
+        echo "Contents:"
+        ls -la $(workspaces.output.path)/ | head -20
 
 ---
 apiVersion: tekton.dev/v1beta1
@@ -280,3 +250,90 @@ spec:
         kubectl rollout status deployment/inventory --timeout=5m
         
         echo "Deployment completed successfully!"
+
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: behave
+spec:
+  description: Run BDD tests using Behave against the deployed service
+  workspaces:
+    - name: source
+      description: The workspace containing the BDD test features
+  params:
+    - name: base-url
+      description: The base URL of the deployed service to test against
+      type: string
+    - name: driver
+      description: The web driver to use for Selenium tests
+      type: string
+      default: "chrome"
+    - name: wait-seconds
+      description: Number of seconds to wait for the service to be ready
+      type: string
+      default: "60"
+  steps:
+    - name: wait-for-service
+      image: cluster-registry:5001/inventory:1.0
+      securityContext:
+        runAsUser: 0
+      script: |
+        #!/bin/bash
+        set -e
+        
+        echo "Installing curl..."
+        apt-get update -qq && apt-get install -y curl
+        
+        echo "Waiting for service to be ready at $(params.base-url)..."
+        
+        WAIT_TIME=$(params.wait-seconds)
+        COUNTER=0
+        
+        # For K3s with Traefik ingress, extract host from URL
+        HOST=$(echo $(params.base-url) | sed 's|http://||' | sed 's|https://||' | cut -d: -f1)
+        echo "Using Host header: $HOST"
+        
+        until curl -f $(params.base-url)/health || [ $COUNTER -eq $WAIT_TIME ]; do
+          echo "Waiting for service... ($COUNTER/$WAIT_TIME)"
+          sleep 1
+          COUNTER=$((COUNTER+1))
+        done
+        
+        if [ $COUNTER -eq $WAIT_TIME ]; then
+          echo "Service did not become ready in time"
+          exit 1
+        fi
+        
+        echo "Service is ready!"
+    
+    - name: run-behave-tests
+      image: cluster-registry:5001/inventory:1.0
+      securityContext:
+        runAsUser: 0
+      workingDir: $(workspaces.source.path)
+      env:
+        - name: BASE_URL
+          value: $(params.base-url)
+        - name: DRIVER
+          value: $(params.driver)
+      script: |
+        #!/bin/bash
+        set -e
+        
+        echo "Installing test dependencies..."
+        apt-get update && apt-get install -y chromium chromium-driver gcc libpq-dev
+        
+        echo "Installing Python test packages..."
+        pip install --upgrade pip pipenv
+        
+        echo "Installing project dependencies with pipenv..."
+        pipenv install --dev --system
+        
+        echo "Running Behave tests against $(params.base-url)..."
+        echo "BASE_URL is set to: $BASE_URL"
+        
+        # Run behave tests
+        behave --format=pretty --tags=-wip --no-capture --no-capture-stderr
+        
+        echo "BDD tests completed successfully!"
