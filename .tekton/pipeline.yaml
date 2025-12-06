@@ -20,6 +20,10 @@ spec:
     - name: app-name
       description: The name of the application to deploy
       type: string
+    - name: base-url
+      description: The base URL of the deployed service for BDD tests
+      type: string
+      default: "http://inventory:8080" 
   tasks:
     - name: clone
       taskRef:
@@ -40,9 +44,6 @@ spec:
       workspaces:
         - name: source
           workspace: pipeline-workspace
-      params:
-        - name: path
-          value: service
     - name: test
       taskRef:
         name: tests
@@ -84,4 +85,4 @@ spec:
           workspace: pipeline-workspace
       params:
         - name: base-url
-          value: $(params.app-name)
+          value: $(params.base-url)
