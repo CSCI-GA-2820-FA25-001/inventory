@@ -137,14 +137,37 @@ class TestInventoryModel(TestCase):
         self.assertNotEqual(updated.condition, old_condition)
 
     def test_update_inventory_item_with_error(self):
-        """It should raise DataValidationError when update() fails"""
+        """It should raise DataValidationError when update() is called with empty id"""
+        # No create(), so id stays None
+        item = InventoryFactory()
+        self.assertIsNone(item.id)
 
-        item = Inventory(
-            product_id=1, quantity=1, restock_level=1, restock_amount=1, condition="BAD"
-        )  # not Enum
-        db.session.add(item)
         with self.assertRaises(DataValidationError):
             item.update()
+
+    def test_update_inventory_item_with_bad_condition(self):
+        """It should raise DataValidationError when condition is invalid"""
+        item = InventoryFactory()
+        item.create()
+        self.assertIsNotNone(item.id)
+
+        # Force an invalid (non-Condition) value
+        item.condition = "BAD"
+
+        with self.assertRaises(DataValidationError):
+            item.update()
+
+    @patch("service.models.db.session.commit", side_effect=Exception("DB Error"))
+    def test_update_inventory_item_with_db_error(self, mock_commit):
+        """It should raise DataValidationError when db commit fails in update()"""
+        item = InventoryFactory(condition=Condition.NEW)
+        item.create()
+        self.assertIsNotNone(item.id)
+
+        with self.assertRaises(DataValidationError):
+            item.update()
+
+        mock_commit.assert_called_once()
 
     # ----------------------------------------------------------
     # TEST DELETE
@@ -249,3 +272,4 @@ class TestInventoryModel(TestCase):
         used_items = Inventory.find_by_condition(Condition.USED)
         used_list = list(used_items)
         self.assertEqual(len(used_list), 1)
+
