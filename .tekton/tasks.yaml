@@ -93,7 +93,6 @@ spec:
         echo "Running pylint on entire repo..."
         pylint . --max-line-length=127
 
----
 apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
@@ -115,8 +114,7 @@ spec:
     - name: database_uri
       description: Database URI for testing
       type: string
-      # ✅ Use SQLite in the CI container
-      default: "sqlite:///inventory_test.db"
+      default: "postgresql+psycopg://postgres:postgres@localhost:5432/testdb"
   steps:
     - name: tests
       image: $(params.image)
@@ -127,70 +125,30 @@ spec:
       script: |
         #!/bin/bash
         set -e
-
         echo "=== PWD ==="
         pwd
-        echo "=== Initial workspace contents ==="
-        ls -la || true
-
-        # If the workspace doesn't have the repo yet, clone it directly here
+        echo "=== Workspace contents ==="
+        ls -la
+        echo "=== Tree ==="
+        ls -R || true
         if [ ! -f Pipfile ]; then
-          echo "Pipfile not found – workspace appears empty. Cloning repo directly into workspace..."
-
-          echo "Installing git and system deps..."
-          apt-get update -qq && apt-get install -y git gcc libpq-dev postgresql-client
-
-          REPO_URL="https://github.com/CSCI-GA-2820-FA25-001/inventory"
-          BRANCH="master"
-
-          TEMP_DIR="/tmp/repo-clone"
-          rm -rf "$TEMP_DIR"
-
-          echo "Cloning $REPO_URL (branch: $BRANCH) into $TEMP_DIR..."
-          git clone --depth 1 --branch "$BRANCH" "$REPO_URL" "$TEMP_DIR"
-
-          echo "Copying repo contents into workspace $(workspaces.source.path)..."
-          cp -r "$TEMP_DIR"/* "$(workspaces.source.path)/"
-
-          echo "=== Workspace contents after clone ==="
-          ls -la
-        else
-          echo "Pipfile found – assuming source code is already present."
-          echo "Installing system deps..."
-          apt-get update -qq && apt-get install -y gcc libpq-dev postgresql-client
-        fi
-
-        if [ ! -f Pipfile ]; then
-          echo "ERROR: Pipfile still not found after clone. Aborting."
+          echo "ERROR: Pipfile not found in $(pwd). Did git-clone run and share the workspace?"
           exit 1
         fi
-
+        echo "Installing system dependencies..."
+        apt-get update && apt-get install -y gcc libpq-dev postgresql-client
         echo "Installing pipenv..."
         pip install --upgrade pip pipenv
-
         if [ ! -f Pipfile.lock ]; then
-          echo "Pipfile.lock not found – creating lockfile with 'pipenv lock'..."
+          echo "Pipfile.lock not found – creating lockfile..."
           pipenv lock
         fi
-
-        if [ ! -f Pipfile.lock ]; then
-          echo "ERROR: Pipfile.lock still not found after 'pipenv lock'. Aborting."
-          ls -la
-          exit 1
-        fi
-
         echo "Syncing project dependencies from Pipfile.lock into system env..."
-        if ! pipenv sync --dev --system; then
-          echo "pipenv sync failed, falling back to 'pipenv install --dev --system'..."
-          pipenv install --dev --system
-        fi
-
-        echo "Running unit tests with coverage (DATABASE_URI=${DATABASE_URI})..."
+        pipenv sync --dev --system
+        echo "Running unit tests with coverage..."
         export RETRY_COUNT=1
         pytest --pspec --cov=service --cov-fail-under=95 --disable-warnings
-
         echo "Tests completed successfully!"
-
 
 
 ---
