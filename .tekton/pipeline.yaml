@@ -75,7 +75,7 @@ spec:
       workspaces:
         - name: source
           workspace: pipeline-workspace
-    - name: test
+    - name: testing
       runAfter:
         - git-clone
       taskRef:
@@ -90,7 +90,7 @@ spec:
           value: $(params.image-name)
       runAfter:
         - pylint
-        - test
+        - testing
       taskRef:
         kind: Task
         name: build
