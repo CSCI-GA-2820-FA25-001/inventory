@@ -71,17 +71,9 @@ class Inventory(db.Model):
         """
         logger.info("Saving inventory for product_id: %s", self.product_id)
 
-        # Must have an id to update
-        if self.id is None:
-            raise DataValidationError("Update called with empty ID")
-
-        # Explicitly validate condition: must be a Condition enum
-        if not isinstance(self.condition, Condition):
-            raise DataValidationError(f"Invalid condition: {self.condition!r}")
-
         try:
             db.session.commit()
-        except Exception as e:  # You can narrow this later if you want
+        except Exception as e:
             db.session.rollback()
             logger.error("Error updating record: %s", self)
             raise DataValidationError(e) from e
