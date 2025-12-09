@@ -77,16 +77,15 @@ class Inventory(db.Model):
 
         # Explicitly validate condition: must be a Condition enum
         if not isinstance(self.condition, Condition):
-            raise DataValidationError(
-                f"Invalid condition: {self.condition!r}"
-            )
+            raise DataValidationError(f"Invalid condition: {self.condition!r}")
 
         try:
             db.session.commit()
-        except Exception as e:
+        except Exception as e:  # You can narrow this later if you want
             db.session.rollback()
             logger.error("Error updating record: %s", self)
             raise DataValidationError(e) from e
+
 
     def delete(self):
         """Removes an Inventory item from the data store"""
