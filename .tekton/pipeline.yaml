@@ -109,7 +109,7 @@ spec:
       workspaces:
         - name: source
           workspace: pipeline-workspace
-    - name: bdd-test
+    - name: behave
       params:
         - name: base-url
           value: $(params.base-url)
