@@ -137,7 +137,9 @@ class TestInventoryModel(TestCase):
         self.assertNotEqual(updated.condition, old_condition)
 
     def test_update_inventory_item_with_error(self):
-        """It should raise DataValidationError when update() fails due to database error"""
+        """It should raise DataValidationError when update() fails"""
+        
+        # First create a valid item
         item = InventoryFactory()
         item.create()
         self.assertIsNotNone(item.id)
