@@ -138,13 +138,12 @@ class TestInventoryModel(TestCase):
 
     def test_update_inventory_item_with_error(self):
         """It should raise DataValidationError when update() fails"""
-        # First create a valid item
         item = InventoryFactory()
         item.create()
         self.assertIsNotNone(item.id)
         
-        # Now try to update it with invalid data
-        item.condition = "BAD"  # Invalid condition (not an enum)
+        # Force a database error by trying to update with None for a required field
+        item.product_id = None
         
         with self.assertRaises(DataValidationError):
             item.update()
