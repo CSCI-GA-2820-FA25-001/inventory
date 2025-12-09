@@ -35,31 +35,16 @@ spec:
       default: master
   steps:
     - name: clone
-      image: cluster-registry:5001/inventory:1.0
+      image: alpine:3.19
       securityContext:
         runAsUser: 0
       workingDir: $(workspaces.output.path)
       script: |
-        #!/bin/bash
-        set -e
-        
-        echo "Installing git..."
-        apt-get update -qq && apt-get install -y git
-        
-        echo "Cloning $(params.url) branch $(params.revision)..."
-        
-        # Clone to temp directory, then copy to workspace
-        TEMP_DIR="/tmp/repo-clone"
-        rm -rf $TEMP_DIR
-        
-        git clone --depth 1 --branch $(params.revision) $(params.url) $TEMP_DIR
-        
-        echo "Copying files to workspace..."
-        cp -rf $TEMP_DIR/. $(workspaces.output.path)/
-        
-        echo "Clone completed successfully!"
-        echo "Contents:"
-        ls -la $(workspaces.output.path)/ | head -20
+        #!/bin/sh
+        set -ex
+        apk add --no-cache git
+        git clone --depth 1 --branch $(params.revision) $(params.url) /tmp/repo-clone
+        cp -r /tmp/repo-clone/* $(workspaces.output.path)/
 
 ---
 apiVersion: tekton.dev/v1beta1
