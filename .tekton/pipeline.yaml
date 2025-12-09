@@ -1,39 +1,7 @@
 apiVersion: tekton.dev/v1
 kind: Pipeline
 metadata:
-  annotations:
-    kubectl.kubernetes.io/last-applied-configuration: |
-      {"apiVersion":"tekton.dev/v1beta1","kind":"Pipeline","metadata":{"annotations":{},"name":"cd-pipeline","namespace":"sichenz-dev"},"spec":{"params":[{"description":"The URL of the git repository to clone","name":"git-url","type":"string"},{"default":"master","description":"The branch or ref to checkout","name":"git-ref","type":"string"},{"description":"The name of the image to build and deploy","name":"image-name","type":"string"},{"description":"The name of the application to deploy","name":"app-name","type":"string"},{"default":"http://inventory:8080","description":"The base URL of the deployed service for BDD tests","name":"base-url","type":"string"}],"tasks":[{"name":"clone","params":[{"name":"url","value":"$(params.git-url)"},{"name":"revision","value":"$(params.git-ref)"}],"taskRef":{"name":"checkout"},"workspaces":[{"name":"output","workspace":"pipeline-workspace"}]},{"name":"lint","runAfter":["git-clone"],"taskRef":{"name":"lint"},"workspaces":[{"name":"source","workspace":"pipeline-workspace"}]},{"name":"test","runAfter":["git-clone"],"taskRef":{"name":"tests"},"workspaces":[{"name":"source","workspace":"pipeline-workspace"}]},{"name":"build","params":[{"name":"IMAGE","value":"$(params.image-name)"}],"runAfter":["lint","test"],"taskRef":{"name":"build"},"workspaces":[{"name":"source","workspace":"pipeline-workspace"}]},{"name":"deploy","params":[{"name":"IMAGE","value":"$(params.image-name)"}],"runAfter":["build"],"taskRef":{"name":"deploy"},"workspaces":[{"name":"source","workspace":"pipeline-workspace"}]},{"name":"bdd-test","params":[{"name":"base-url","value":"$(params.base-url)"}],"runAfter":["deploy"],"taskRef":{"name":"behave"},"workspaces":[{"name":"source","workspace":"pipeline-workspace"}]}],"workspaces":[{"description":"Shared workspace for all tasks","name":"pipeline-workspace"}]}}
-  creationTimestamp: '2025-12-09T00:34:42Z'
-  generation: 2
-  managedFields:
-    - apiVersion: tekton.dev/v1beta1
-      fieldsType: FieldsV1
-      fieldsV1:
-        'f:metadata':
-          'f:annotations': {}
-        'f:spec':
-          .: {}
-          'f:params': {}
-          'f:workspaces': {}
-      manager: kubectl-client-side-apply
-      operation: Update
-      time: '2025-12-09T00:34:42Z'
-    - apiVersion: tekton.dev/v1
-      fieldsType: FieldsV1
-      fieldsV1:
-        'f:metadata':
-          'f:annotations':
-            'f:kubectl.kubernetes.io/last-applied-configuration': {}
-        'f:spec':
-          'f:tasks': {}
-      manager: Mozilla
-      operation: Update
-      time: '2025-12-09T00:43:24Z'
   name: cd-pipeline
-  namespace: sichenz-dev
-  resourceVersion: '4633588179'
-  uid: 64cf0b62-b451-48ec-a72c-07f22fe98e05
 spec:
   params:
     - description: The URL of the git repository to clone
