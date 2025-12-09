@@ -78,6 +78,7 @@ class Inventory(db.Model):
             logger.error("Error updating record: %s", self)
             raise DataValidationError(e) from e
 
+
     def delete(self):
         """Removes an Inventory item from the data store"""
         logger.info("Deleting inventory for product_id: %s", self.product_id)

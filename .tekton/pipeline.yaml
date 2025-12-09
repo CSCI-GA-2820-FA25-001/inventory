@@ -1,4 +1,4 @@
-apiVersion: tekton.dev/v1
+apiVersion: tekton.dev/v1beta1
 kind: Pipeline
 metadata:
   name: cd-pipeline
@@ -32,7 +32,7 @@ spec:
         kind: Task
         name: checkout
       workspaces:
-        - name: output
+        - name: source
           workspace: pipeline-workspace
     - name: pylint
       runAfter:

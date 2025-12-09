@@ -21,13 +21,15 @@ spec:
       pipelineRef:
         name: cd-pipeline
       params:
-      - name: APP_NAME
-        value: $(tt.params.git-repo-name)
-      - name: GIT_REPO
+      - name: git-url
         value: $(tt.params.git-repo-url)
-      - name: IMAGE_NAME
+      - name: git-ref
+        value: $(tt.params.git-revision)
+      - name: image-name
         value: image-registry.openshift-image-registry.svc:5000/$(context.pipelineRun.namespace)/$(tt.params.git-repo-name):$(tt.params.git-revision)
+      - name: app-name
+        value: $(tt.params.git-repo-name)
       workspaces:
       - name: pipeline-workspace
         persistentVolumeClaim:
-          claimName: pipeline-pvc
+          claimName: pipeline-workspace

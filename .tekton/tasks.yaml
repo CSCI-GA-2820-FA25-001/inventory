@@ -23,7 +23,7 @@ metadata:
 spec:
   description: Clone the code repository to the workspace
   workspaces:
-    - name: output
+    - name: source
       description: The git repo will be cloned onto the volume backing this workspace
   params:
     - name: url
@@ -35,31 +35,20 @@ spec:
       default: master
   steps:
     - name: clone
-      image: cluster-registry:5001/inventory:1.0
+      image: alpine:3.19
       securityContext:
         runAsUser: 0
-      workingDir: $(workspaces.output.path)
+      workingDir: $(workspaces.source.path)
       script: |
-        #!/bin/bash
-        set -e
-        
-        echo "Installing git..."
-        apt-get update -qq && apt-get install -y git
-        
-        echo "Cloning $(params.url) branch $(params.revision)..."
-        
-        # Clone to temp directory, then copy to workspace
-        TEMP_DIR="/tmp/repo-clone"
-        rm -rf $TEMP_DIR
-        
-        git clone --depth 1 --branch $(params.revision) $(params.url) $TEMP_DIR
-        
-        echo "Copying files to workspace..."
-        cp -rf $TEMP_DIR/. $(workspaces.output.path)/
-        
-        echo "Clone completed successfully!"
-        echo "Contents:"
-        ls -la $(workspaces.output.path)/ | head -20
+        #!/bin/sh
+        set -ex
+        apk add --no-cache git
+        git clone --depth 1 --branch $(params.revision) $(params.url) /tmp/repo-clone
+        cp -r /tmp/repo-clone/* $(workspaces.source.path)/
+        echo "Workspace after clone:"
+        ls -R $(workspaces.source.path)
+
+
 
 ---
 apiVersion: tekton.dev/v1beta1
@@ -87,17 +76,22 @@ spec:
       script: |
         #!/bin/bash
         set -e
-        
+
+        echo "PWD is:"
+        pwd
+        echo "Contents of workingDir:"
+        ls -R
+
         echo "Installing linting dependencies..."
         pip install --upgrade pip
         pip install flake8 pylint
-        
-        echo "Running flake8..."
-        flake8 service tests --count --select=E9,F63,F7,F82 --show-source --statistics
-        flake8 service tests --count --max-complexity=10 --max-line-length=127 --statistics
-        
-        echo "Running pylint..."
-        pylint service tests --max-line-length=127
+
+        echo "Running flake8 on entire repo..."
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 . --count --max-complexity=10 --max-line-length=127 --statistics
+
+        echo "Running pylint on entire repo..."
+        pylint . --max-line-length=127
 
 ---
 apiVersion: tekton.dev/v1beta1
@@ -121,7 +115,8 @@ spec:
     - name: database_uri
       description: Database URI for testing
       type: string
-      default: "postgresql+psycopg://postgres:postgres@localhost:5432/testdb"
+      # ✅ Use SQLite in the CI container
+      default: "sqlite:///inventory_test.db"
   steps:
     - name: tests
       image: $(params.image)
@@ -132,17 +127,71 @@ spec:
       script: |
         #!/bin/bash
         set -e
-        
-        echo "Installing dependencies..."
-        apt-get update && apt-get install -y gcc libpq-dev postgresql-client
+
+        echo "=== PWD ==="
+        pwd
+        echo "=== Initial workspace contents ==="
+        ls -la || true
+
+        # If the workspace doesn't have the repo yet, clone it directly here
+        if [ ! -f Pipfile ]; then
+          echo "Pipfile not found – workspace appears empty. Cloning repo directly into workspace..."
+
+          echo "Installing git and system deps..."
+          apt-get update -qq && apt-get install -y git gcc libpq-dev postgresql-client
+
+          REPO_URL="https://github.com/CSCI-GA-2820-FA25-001/inventory"
+          BRANCH="master"
+
+          TEMP_DIR="/tmp/repo-clone"
+          rm -rf "$TEMP_DIR"
+
+          echo "Cloning $REPO_URL (branch: $BRANCH) into $TEMP_DIR..."
+          git clone --depth 1 --branch "$BRANCH" "$REPO_URL" "$TEMP_DIR"
+
+          echo "Copying repo contents into workspace $(workspaces.source.path)..."
+          cp -r "$TEMP_DIR"/* "$(workspaces.source.path)/"
+
+          echo "=== Workspace contents after clone ==="
+          ls -la
+        else
+          echo "Pipfile found – assuming source code is already present."
+          echo "Installing system deps..."
+          apt-get update -qq && apt-get install -y gcc libpq-dev postgresql-client
+        fi
+
+        if [ ! -f Pipfile ]; then
+          echo "ERROR: Pipfile still not found after clone. Aborting."
+          exit 1
+        fi
+
+        echo "Installing pipenv..."
         pip install --upgrade pip pipenv
-        pipenv install --dev --system
-        
-        echo "Running unit tests with coverage..."
+
+        if [ ! -f Pipfile.lock ]; then
+          echo "Pipfile.lock not found – creating lockfile with 'pipenv lock'..."
+          pipenv lock
+        fi
+
+        if [ ! -f Pipfile.lock ]; then
+          echo "ERROR: Pipfile.lock still not found after 'pipenv lock'. Aborting."
+          ls -la
+          exit 1
+        fi
+
+        echo "Syncing project dependencies from Pipfile.lock into system env..."
+        if ! pipenv sync --dev --system; then
+          echo "pipenv sync failed, falling back to 'pipenv install --dev --system'..."
+          pipenv install --dev --system
+        fi
+
+        echo "Running unit tests with coverage (DATABASE_URI=${DATABASE_URI})..."
         export RETRY_COUNT=1
         pytest --pspec --cov=service --cov-fail-under=95 --disable-warnings
-        
+
         echo "Tests completed successfully!"
+
+
 
 ---
 apiVersion: tekton.dev/v1beta1
@@ -226,6 +275,10 @@ spec:
     - name: IMAGE
       description: The image reference to deploy
       type: string
+    - name: APP_NAME
+      description: The name of the application
+      type: string
+      default: inventory
     - name: MANIFEST_DIR
       description: Directory containing kubernetes manifests
       type: string
@@ -238,19 +291,41 @@ spec:
         #!/bin/bash
         set -e
         
+        echo "Deploying to OpenShift..."
+        
+        # Apply PostgreSQL resources first (if not already deployed)
+        echo "Ensuring PostgreSQL is deployed..."
+        oc apply -f $(params.MANIFEST_DIR)/postgres/ || true
+        
+        # Wait a bit for postgres to be ready
+        sleep 5
+        
+        # Apply application service first
+        echo "Applying service..."
+        oc apply -f $(params.MANIFEST_DIR)/service.yaml
+        
+        # Apply route
+        echo "Applying route..."
+        oc apply -f $(params.MANIFEST_DIR)/route.yaml
+        
+        # Apply deployment
+        echo "Applying deployment..."
+        oc apply -f $(params.MANIFEST_DIR)/deployment.yaml
+        
+        # Update the deployment image to the one just built
         echo "Updating deployment with image $(params.IMAGE)..."
-        
-        # Update the image in the deployment
-        kubectl set image deployment/inventory inventory=$(params.IMAGE) || true
-        
-        echo "Applying Kubernetes manifests from $(params.MANIFEST_DIR)..."
-        kubectl apply -f $(params.MANIFEST_DIR)/
+        oc set image deployment/$(params.APP_NAME) $(params.APP_NAME)=$(params.IMAGE)
         
         echo "Waiting for deployment to complete..."
-        kubectl rollout status deployment/inventory --timeout=5m
+        oc rollout status deployment/$(params.APP_NAME) --timeout=5m
+        
+        echo "Getting route URL..."
+        ROUTE_URL=$(oc get route $(params.APP_NAME) -o jsonpath='{.spec.host}')
+        echo "Application available at: http://$ROUTE_URL"
         
         echo "Deployment completed successfully!"
 
+---
 ---
 apiVersion: tekton.dev/v1beta1
 kind: Task
@@ -275,7 +350,7 @@ spec:
       default: "60"
   steps:
     - name: wait-for-service
-      image: cluster-registry:5001/inventory:1.0
+      image: cluster-registry:5001/inventory:1.0   # 👈 no $(params.APP_NAME) here
       securityContext:
         runAsUser: 0
       script: |
@@ -290,7 +365,6 @@ spec:
         WAIT_TIME=$(params.wait-seconds)
         COUNTER=0
         
-        # For K3s with Traefik ingress, extract host from URL
         HOST=$(echo $(params.base-url) | sed 's|http://||' | sed 's|https://||' | cut -d: -f1)
         echo "Using Host header: $HOST"
         
@@ -333,7 +407,6 @@ spec:
         echo "Running Behave tests against $(params.base-url)..."
         echo "BASE_URL is set to: $BASE_URL"
         
-        # Run behave tests
         behave --format=pretty --tags=-wip --no-capture --no-capture-stderr
         
         echo "BDD tests completed successfully!"

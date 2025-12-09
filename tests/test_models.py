@@ -17,7 +17,6 @@
 """
 Test cases for Inventory Model
 """
-# pylint: disable=duplicate-code
 import os
 import logging
 from unittest.mock import patch
