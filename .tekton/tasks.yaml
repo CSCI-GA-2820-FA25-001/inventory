@@ -23,7 +23,7 @@ metadata:
 spec:
   description: Clone the code repository to the workspace
   workspaces:
-    - name: output
+    - name: source
       description: The git repo will be cloned onto the volume backing this workspace
   params:
     - name: url
@@ -35,19 +35,19 @@ spec:
       default: master
   steps:
     - name: clone
-      image: alpine:3.19          # 👈 static image, no $(params.APP_NAME)
+      image: alpine:3.19
       securityContext:
         runAsUser: 0
-      workingDir: $(workspaces.output.path)
+      workingDir: $(workspaces.source.path)
       script: |
         #!/bin/sh
         set -ex
         apk add --no-cache git
         git clone --depth 1 --branch $(params.revision) $(params.url) /tmp/repo-clone
-        cp -r /tmp/repo-clone/* $(workspaces.output.path)/
-
+        cp -r /tmp/repo-clone/* $(workspaces.source.path)/
         echo "Workspace after clone:"
-        ls -R $(workspaces.output.path)
+        ls -R $(workspaces.source.path)
+
 
 
 ---
@@ -115,7 +115,8 @@ spec:
     - name: database_uri
       description: Database URI for testing
       type: string
-      default: "postgresql+psycopg://postgres:postgres@localhost:5432/testdb"
+      # ✅ Use SQLite in the CI container
+      default: "sqlite:///inventory_test.db"
   steps:
     - name: tests
       image: $(params.image)
@@ -129,35 +130,67 @@ spec:
 
         echo "=== PWD ==="
         pwd
-        echo "=== Workspace contents ==="
-        ls -la
-        echo "=== Tree ==="
-        ls -R || true
+        echo "=== Initial workspace contents ==="
+        ls -la || true
 
+        # If the workspace doesn't have the repo yet, clone it directly here
         if [ ! -f Pipfile ]; then
-          echo "ERROR: Pipfile not found in $(pwd). Did git-clone run and share the workspace?"
-          exit 1
+          echo "Pipfile not found – workspace appears empty. Cloning repo directly into workspace..."
+
+          echo "Installing git and system deps..."
+          apt-get update -qq && apt-get install -y git gcc libpq-dev postgresql-client
+
+          REPO_URL="https://github.com/CSCI-GA-2820-FA25-001/inventory"
+          BRANCH="master"
+
+          TEMP_DIR="/tmp/repo-clone"
+          rm -rf "$TEMP_DIR"
+
+          echo "Cloning $REPO_URL (branch: $BRANCH) into $TEMP_DIR..."
+          git clone --depth 1 --branch "$BRANCH" "$REPO_URL" "$TEMP_DIR"
+
+          echo "Copying repo contents into workspace $(workspaces.source.path)..."
+          cp -r "$TEMP_DIR"/* "$(workspaces.source.path)/"
+
+          echo "=== Workspace contents after clone ==="
+          ls -la
+        else
+          echo "Pipfile found – assuming source code is already present."
+          echo "Installing system deps..."
+          apt-get update -qq && apt-get install -y gcc libpq-dev postgresql-client
         fi
 
-        echo "Installing system dependencies..."
-        apt-get update && apt-get install -y gcc libpq-dev postgresql-client
+        if [ ! -f Pipfile ]; then
+          echo "ERROR: Pipfile still not found after clone. Aborting."
+          exit 1
+        fi
 
         echo "Installing pipenv..."
         pip install --upgrade pip pipenv
 
         if [ ! -f Pipfile.lock ]; then
-          echo "Pipfile.lock not found – creating lockfile..."
+          echo "Pipfile.lock not found – creating lockfile with 'pipenv lock'..."
           pipenv lock
         fi
 
-        echo "Syncing project dependencies from Pipfile.lock into system env..."
-        pipenv sync --dev --system
+        if [ ! -f Pipfile.lock ]; then
+          echo "ERROR: Pipfile.lock still not found after 'pipenv lock'. Aborting."
+          ls -la
+          exit 1
+        fi
 
-        echo "Running unit tests with coverage..."
+        echo "Syncing project dependencies from Pipfile.lock into system env..."
+        if ! pipenv sync --dev --system; then
+          echo "pipenv sync failed, falling back to 'pipenv install --dev --system'..."
+          pipenv install --dev --system
+        fi
+
+        echo "Running unit tests with coverage (DATABASE_URI=${DATABASE_URI})..."
         export RETRY_COUNT=1
         pytest --pspec --cov=service --cov-fail-under=95 --disable-warnings
 
         echo "Tests completed successfully!"
+
 
 
 ---

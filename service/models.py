@@ -66,17 +66,20 @@ class Inventory(db.Model):
             raise DataValidationError(e) from e
 
     def update(self):
-        """
-        Updates an Inventory item in the database
-        """
-        logger.info("Saving inventory for product_id: %s", self.product_id)
+        """Updates an Inventory item in the database"""
+        logger.info("Updating inventory item %s", self.id)
+
+        if not self.id:
+            raise DataValidationError("Update called with empty ID")
 
         try:
             db.session.commit()
-        except Exception as e:
+        except (IntegrityError, SQLAlchemyError, Exception) as error:
+            logger.error("Error updating inventory item: %s", error)
             db.session.rollback()
-            logger.error("Error updating record: %s", self)
-            raise DataValidationError(e) from e
+            raise DataValidationError(
+                f"Error updating inventory item: {error}"
+            ) from error
 
     def delete(self):
         """Removes an Inventory item from the data store"""
