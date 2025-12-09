@@ -69,12 +69,13 @@ class Inventory(db.Model):
         """Updates an Inventory item in the database"""
         logger.info("Updating inventory item %s", self.id)
 
+        # Guard: cannot update without an id
         if not self.id:
             raise DataValidationError("Update called with empty ID")
 
         try:
             db.session.commit()
-        except (IntegrityError, SQLAlchemyError, Exception) as error:
+        except (IntegrityError, DataError, SQLAlchemyError, Exception) as error:
             logger.error("Error updating inventory item: %s", error)
             db.session.rollback()
             raise DataValidationError(
