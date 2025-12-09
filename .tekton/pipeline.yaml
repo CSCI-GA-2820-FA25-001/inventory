@@ -66,12 +66,12 @@ spec:
       workspaces:
         - name: output
           workspace: pipeline-workspace
-    - name: lint
+    - name: pylint
       runAfter:
         - git-clone
       taskRef:
         kind: Task
-        name: lint
+        name: pylint
       workspaces:
         - name: source
           workspace: pipeline-workspace
