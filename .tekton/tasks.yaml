@@ -35,7 +35,7 @@ spec:
       default: master
   steps:
     - name: clone
-      image: alpine:3.19
+      image: alpine:3.19          # 👈 static image, no $(params.APP_NAME)
       securityContext:
         runAsUser: 0
       workingDir: $(workspaces.output.path)
@@ -45,6 +45,10 @@ spec:
         apk add --no-cache git
         git clone --depth 1 --branch $(params.revision) $(params.url) /tmp/repo-clone
         cp -r /tmp/repo-clone/* $(workspaces.output.path)/
+
+        echo "Workspace after clone:"
+        ls -R $(workspaces.output.path)
+
 
 ---
 apiVersion: tekton.dev/v1beta1
@@ -72,17 +76,22 @@ spec:
       script: |
         #!/bin/bash
         set -e
-        
+
+        echo "PWD is:"
+        pwd
+        echo "Contents of workingDir:"
+        ls -R
+
         echo "Installing linting dependencies..."
         pip install --upgrade pip
         pip install flake8 pylint
-        
-        echo "Running flake8..."
-        flake8 service tests --count --select=E9,F63,F7,F82 --show-source --statistics
-        flake8 service tests --count --max-complexity=10 --max-line-length=127 --statistics
-        
-        echo "Running pylint..."
-        pylint service tests --max-line-length=127
+
+        echo "Running flake8 on entire repo..."
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 . --count --max-complexity=10 --max-line-length=127 --statistics
+
+        echo "Running pylint on entire repo..."
+        pylint . --max-line-length=127
 
 ---
 apiVersion: tekton.dev/v1beta1
@@ -117,17 +126,39 @@ spec:
       script: |
         #!/bin/bash
         set -e
-        
-        echo "Installing dependencies..."
+
+        echo "=== PWD ==="
+        pwd
+        echo "=== Workspace contents ==="
+        ls -la
+        echo "=== Tree ==="
+        ls -R || true
+
+        if [ ! -f Pipfile ]; then
+          echo "ERROR: Pipfile not found in $(pwd). Did git-clone run and share the workspace?"
+          exit 1
+        fi
+
+        echo "Installing system dependencies..."
         apt-get update && apt-get install -y gcc libpq-dev postgresql-client
+
+        echo "Installing pipenv..."
         pip install --upgrade pip pipenv
-        pipenv install --dev --system
-        
+
+        if [ ! -f Pipfile.lock ]; then
+          echo "Pipfile.lock not found – creating lockfile..."
+          pipenv lock
+        fi
+
+        echo "Syncing project dependencies from Pipfile.lock into system env..."
+        pipenv sync --dev --system
+
         echo "Running unit tests with coverage..."
         export RETRY_COUNT=1
         pytest --pspec --cov=service --cov-fail-under=95 --disable-warnings
-        
+
         echo "Tests completed successfully!"
+
 
 ---
 apiVersion: tekton.dev/v1beta1
@@ -211,6 +242,10 @@ spec:
     - name: IMAGE
       description: The image reference to deploy
       type: string
+    - name: APP_NAME
+      description: The name of the application
+      type: string
+      default: inventory
     - name: MANIFEST_DIR
       description: Directory containing kubernetes manifests
       type: string
@@ -223,19 +258,41 @@ spec:
         #!/bin/bash
         set -e
         
+        echo "Deploying to OpenShift..."
+        
+        # Apply PostgreSQL resources first (if not already deployed)
+        echo "Ensuring PostgreSQL is deployed..."
+        oc apply -f $(params.MANIFEST_DIR)/postgres/ || true
+        
+        # Wait a bit for postgres to be ready
+        sleep 5
+        
+        # Apply application service first
+        echo "Applying service..."
+        oc apply -f $(params.MANIFEST_DIR)/service.yaml
+        
+        # Apply route
+        echo "Applying route..."
+        oc apply -f $(params.MANIFEST_DIR)/route.yaml
+        
+        # Apply deployment
+        echo "Applying deployment..."
+        oc apply -f $(params.MANIFEST_DIR)/deployment.yaml
+        
+        # Update the deployment image to the one just built
         echo "Updating deployment with image $(params.IMAGE)..."
-        
-        # Update the image in the deployment
-        kubectl set image deployment/inventory inventory=$(params.IMAGE) || true
-        
-        echo "Applying Kubernetes manifests from $(params.MANIFEST_DIR)..."
-        kubectl apply -f $(params.MANIFEST_DIR)/
+        oc set image deployment/$(params.APP_NAME) $(params.APP_NAME)=$(params.IMAGE)
         
         echo "Waiting for deployment to complete..."
-        kubectl rollout status deployment/inventory --timeout=5m
+        oc rollout status deployment/$(params.APP_NAME) --timeout=5m
+        
+        echo "Getting route URL..."
+        ROUTE_URL=$(oc get route $(params.APP_NAME) -o jsonpath='{.spec.host}')
+        echo "Application available at: http://$ROUTE_URL"
         
         echo "Deployment completed successfully!"
 
+---
 ---
 apiVersion: tekton.dev/v1beta1
 kind: Task
@@ -260,7 +317,7 @@ spec:
       default: "60"
   steps:
     - name: wait-for-service
-      image: cluster-registry:5001/inventory:1.0
+      image: cluster-registry:5001/inventory:1.0   # 👈 no $(params.APP_NAME) here
       securityContext:
         runAsUser: 0
       script: |
@@ -275,7 +332,6 @@ spec:
         WAIT_TIME=$(params.wait-seconds)
         COUNTER=0
         
-        # For K3s with Traefik ingress, extract host from URL
         HOST=$(echo $(params.base-url) | sed 's|http://||' | sed 's|https://||' | cut -d: -f1)
         echo "Using Host header: $HOST"
         
@@ -318,7 +374,6 @@ spec:
         echo "Running Behave tests against $(params.base-url)..."
         echo "BASE_URL is set to: $BASE_URL"
         
-        # Run behave tests
         behave --format=pretty --tags=-wip --no-capture --no-capture-stderr
         
         echo "BDD tests completed successfully!"
