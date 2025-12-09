@@ -84,7 +84,7 @@ spec:
       workspaces:
         - name: source
           workspace: pipeline-workspace
-    - name: build
+    - name: buildah
       params:
         - name: IMAGE
           value: $(params.image-name)
@@ -102,7 +102,7 @@ spec:
         - name: IMAGE
           value: $(params.image-name)
       runAfter:
-        - build
+        - buildah
       taskRef:
         kind: Task
         name: deploy
