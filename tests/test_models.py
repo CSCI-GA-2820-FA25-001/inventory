@@ -142,11 +142,10 @@ class TestInventoryModel(TestCase):
         item.create()
         self.assertIsNotNone(item.id)
         
-        # Force a database error by trying to update with None for a required field
-        item.product_id = None
-        
-        with self.assertRaises(DataValidationError):
-            item.update()
+        # Mock the commit to raise an exception
+        with patch('service.models.db.session.commit', side_effect=Exception("Simulated DB error")):
+            with self.assertRaises(DataValidationError):
+                item.update()
 
     # ----------------------------------------------------------
     # TEST DELETE
