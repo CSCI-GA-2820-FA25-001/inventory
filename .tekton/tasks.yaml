@@ -223,28 +223,6 @@ spec:
         echo "sha256:dummy" > "$(results.IMAGE_DIGEST.path)"
 
 
----
-apiVersion: tekton.dev/v1beta1
-kind: Task
-metadata:
-  name: deploy
-spec:
-  description: Deploy the application to OpenShift
-  workspaces:
-    - name: source
-      description: The workspace containing the k8s manifests
-  params:
-    - name: IMAGE
-      description: The image reference to deploy
-      type: string
-    - name: APP_NAME
-      description: The name of the application
-      type: string
-      default: inventory
-    - name: MANIFEST_DIR
-      description: Directory containing kubernetes manifests
-      type: string
-      default: "k8s"
   steps:
     - name: deploy
       image: quay.io/openshift/origin-cli:latest
@@ -254,26 +232,22 @@ spec:
         set -e
         
         echo "Deploying to OpenShift..."
+        echo "Current working directory: $(pwd)"
+        echo "Workspace contents:"
+        ls -R
         
-        # Apply PostgreSQL resources first (if not already deployed)
         echo "Ensuring PostgreSQL is deployed..."
         oc apply -f $(params.MANIFEST_DIR)/postgres/ || true
         
-        # Wait a bit for postgres to be ready
-        sleep 5
-        
-        # Apply application service first
         echo "Applying service..."
         oc apply -f $(params.MANIFEST_DIR)/service.yaml
         
-        # Apply route
         echo "Applying route..."
         oc apply -f $(params.MANIFEST_DIR)/route.yaml
         
-        # Apply deployment
         echo "Applying deployment..."
         oc apply -f $(params.MANIFEST_DIR)/deployment.yaml
-        
+                
         # Update the deployment image to the one just built
         echo "Updating deployment with image $(params.IMAGE)..."
         oc set image deployment/$(params.APP_NAME) $(params.APP_NAME)=$(params.IMAGE)
@@ -287,7 +261,6 @@ spec:
         
         echo "Deployment completed successfully!"
 
----
 ---
 apiVersion: tekton.dev/v1beta1
 kind: Task
