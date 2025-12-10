@@ -148,7 +148,6 @@ class TestInventoryModel(TestCase):
         with patch('service.models.db.session.commit', side_effect=Exception("Database error")):
             with self.assertRaises(DataValidationError):
                 item.update()
-                
     # ----------------------------------------------------------
     # TEST DELETE
     # ----------------------------------------------------------
