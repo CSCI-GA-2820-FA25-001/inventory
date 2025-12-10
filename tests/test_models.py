@@ -151,7 +151,7 @@ class TestInventoryModel(TestCase):
     # ----------------------------------------------------------
     # TEST DELETE
     # ----------------------------------------------------------
-    
+
     def test_delete_an_inventory_item(self):
         """It should Delete an Inventory item from the database"""
         item = InventoryFactory()

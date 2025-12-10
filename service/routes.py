@@ -176,13 +176,13 @@ inventory_args.add_argument(
     help="Search descriptions (case-insensitive partial match)",
 )
 
+
 ######################################################################
 #  H E L P E R S
 ######################################################################
 def build_inventory_query(args):
     """Build an Inventory query from parsed request arguments."""
     q = Inventory.query
-
     condition = args["condition"]
     product_id = args["product_id"]
     quantity = args["quantity"]
@@ -213,9 +213,7 @@ def build_inventory_query(args):
         q = q.filter(Inventory.restock_level > restock_gt)
     if query:
         q = q.filter(Inventory.description.ilike(f"%{query}%"))
-
     return q
-
 
 ######################################################################
 #  R E S T   A P I   E N D P O I N T S
@@ -466,4 +464,3 @@ def abort(error_code: int, message: str):
     """Logs errors before aborting"""
     app.logger.error(message)
     api.abort(error_code, message)
-
