@@ -223,6 +223,28 @@ spec:
         echo "sha256:dummy" > "$(results.IMAGE_DIGEST.path)"
 
 
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: deploy
+spec:
+  description: Deploy the application to OpenShift
+  workspaces:
+    - name: source
+      description: The workspace containing the k8s manifests
+  params:
+    - name: IMAGE
+      description: The image reference to deploy
+      type: string
+    - name: APP_NAME
+      description: The name of the application
+      type: string
+      default: inventory
+    - name: MANIFEST_DIR
+      description: Directory containing kubernetes manifests
+      type: string
+      default: "k8s"
   steps:
     - name: deploy
       image: quay.io/openshift/origin-cli:latest
@@ -247,7 +269,7 @@ spec:
         
         echo "Applying deployment..."
         oc apply -f $(params.MANIFEST_DIR)/deployment.yaml
-                
+        
         # Update the deployment image to the one just built
         echo "Updating deployment with image $(params.IMAGE)..."
         oc set image deployment/$(params.APP_NAME) $(params.APP_NAME)=$(params.IMAGE)
