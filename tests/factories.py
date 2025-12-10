@@ -6,7 +6,8 @@ import random
 import factory
 from factory.fuzzy import FuzzyInteger
 from service.models import Inventory, Condition
-# pylint: disable=too-few-public-methods
+# pylint: disable=too-few-public-methodsg
+
 
 class InventoryFactory(factory.Factory):
     """Creates fake inventory items"""

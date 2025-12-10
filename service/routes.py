@@ -418,7 +418,7 @@ class InventoryCollection(Resource):
 ######################################################################
 @api.route("/inventory/<int:item_id>/restock")
 @api.param("item_id", "The inventory item identifier")
-class RestockResource(Resource): # pylint: disable=too-few-public-methods
+class RestockResource(Resource):  # pylint: disable=too-few-public-methods
     """
     Restock Operations
 
