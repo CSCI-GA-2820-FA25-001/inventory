@@ -396,7 +396,6 @@ class InventoryCollection(Resource):
     @api.response(201, "Inventory item created successfully")
     @api.response(400, "Invalid request data")
     @api.response(409, "Inventory item already exists")
-    @api.response(415, "Unsupported media type")
     @api.expect(create_model)
     @api.marshal_with(inventory_model, code=201)
     def post(self):
@@ -407,30 +406,25 @@ class InventoryCollection(Resource):
         Returns the created item with an auto-generated id.
         """
         app.logger.info("Request to create an Inventory item")
-
-        # Ensure we got JSON
-        if not request.is_json:
-            abort(
-                status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-                "Content-Type must be application/json",
-            )
-
         app.logger.debug("Payload = %s", api.payload)
-        data = api.payload or {}
-
-        # Normalize condition for consistency with queries
-        condition_value = data.get("condition")
-        if condition_value is not None:
-            data["condition"] = str(condition_value).upper()
-
-        # Provide safe defaults for numeric fields that the UI
-        # may leave blank (or not send at all)
-        for field in ("quantity", "restock_level", "restock_amount"):
-            value = data.get(field)
-            if value in (None, ""):
-                data[field] = 0
+        data = dict(api.payload or {})
 
         item = Inventory()
+
+        # Normalize condition for consistency with queries
+        if "condition" in data and data["condition"] is not None:
+            data["condition"] = data["condition"].upper()
+
+        # The UI sends restock_level/restock_amount as empty strings when left blank.
+        # That causes DataValidationError if we don't normalize them.
+        # We ONLY default when the key exists but is "", so the
+        # unit test for "missing data" still behaves as expected.
+        for field in ["restock_level", "restock_amount"]:
+            if field in data and (data[field] == "" or data[field] is None):
+                data[field] = 0
+
+        # Deserialize into our model (will still raise DataValidationError
+        # if required fields are truly missing or invalid)
         item.deserialize(data)
 
         # Check for duplicate product_id
