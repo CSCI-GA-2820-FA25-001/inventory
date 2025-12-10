@@ -141,6 +141,25 @@ class TestYourResourceService(TestCase):
         data = response.get_json()
         self.assertIn("already exists", data["message"])
 
+    def test_create_inventory_with_empty_restock_fields(self):
+        """It should create an inventory item when restock fields are empty strings"""
+        # The UI sends empty strings when fields are left blank
+        test_data = {
+            "product_id": 77777,
+            "condition": "NEW",
+            "quantity": 100,
+            "restock_level": "",  # Empty string
+            "restock_amount": "",  # Empty string
+        }
+
+        response = self.client.post(BASE_URL, json=test_data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        data = response.get_json()
+        self.assertEqual(data["product_id"], 77777)
+        self.assertEqual(data["restock_level"], 0)  # Should default to 0
+        self.assertEqual(data["restock_amount"], 0)  # Should default to 0
+
     # ----------------------------------------------------------
     # TEST UPDATE
     # ----------------------------------------------------------
