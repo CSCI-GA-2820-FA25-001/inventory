@@ -139,13 +139,15 @@ class TestInventoryModel(TestCase):
     def test_update_inventory_item_with_error(self):
         """It should raise DataValidationError when update() fails"""
 
-        item = Inventory(
-            product_id=1, quantity=1, restock_level=1, restock_amount=1, condition="BAD"
-        )  # not Enum
-        db.session.add(item)
-        with self.assertRaises(DataValidationError):
-            item.update()
+        # Create a valid item first
+        item = InventoryFactory()
+        item.create()
+        self.assertIsNotNone(item.id)
 
+        # Mock db.session.commit to simulate a database error
+        with patch('service.models.db.session.commit', side_effect=Exception("Database error")):
+            with self.assertRaises(DataValidationError):
+                item.update()
     # ----------------------------------------------------------
     # TEST DELETE
     # ----------------------------------------------------------

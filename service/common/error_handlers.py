@@ -13,10 +13,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 ######################################################################
+
 """
 Module: error_handlers
 """
 from flask import current_app as app
+from werkzeug.exceptions import (
+    BadRequest,
+    NotFound,
+    MethodNotAllowed,
+    UnsupportedMediaType,
+    Conflict,
+    InternalServerError,
+)
 from service.models import DataValidationError
 from . import status
 from service.routes import api
@@ -27,95 +36,84 @@ from service.routes import api
 ######################################################################
 @api.errorhandler(DataValidationError)
 def request_validation_error(error):
-    """Handles DataValidationError"""
-    return bad_request(error)
+    """Handles DataValidationError -> 400 Bad Request"""
+    message = str(error)
+    app.logger.warning(message)
+    return {
+        "status": status.HTTP_400_BAD_REQUEST,
+        "error": "Bad Request",
+        "message": message,
+    }, status.HTTP_400_BAD_REQUEST
 
 
-@api.errorhandler(status.HTTP_400_BAD_REQUEST)
+@api.errorhandler(BadRequest)
 def bad_request(error):
     """Handles 400 Bad Request"""
     message = str(error)
     app.logger.warning(message)
-    return (
-        {
-            "status": status.HTTP_400_BAD_REQUEST,
-            "error": "Bad Request",
-            "message": message,
-        },
-        status.HTTP_400_BAD_REQUEST,
-    )
+    return {
+        "status": status.HTTP_400_BAD_REQUEST,
+        "error": "Bad Request",
+        "message": message,
+    }, status.HTTP_400_BAD_REQUEST
 
 
-@api.errorhandler(status.HTTP_404_NOT_FOUND)
+@api.errorhandler(NotFound)
 def not_found(error):
     """Handles 404 Not Found"""
     message = str(error)
     app.logger.warning(message)
-    return (
-        {
-            "status": status.HTTP_404_NOT_FOUND,
-            "error": "Not Found",
-            "message": message,
-        },
-        status.HTTP_404_NOT_FOUND,
-    )
+    return {
+        "status": status.HTTP_404_NOT_FOUND,
+        "error": "Not Found",
+        "message": message,
+    }, status.HTTP_404_NOT_FOUND
 
 
-@api.errorhandler(status.HTTP_405_METHOD_NOT_ALLOWED)
+@api.errorhandler(MethodNotAllowed)
 def method_not_supported(error):
     """Handles 405 Method Not Allowed"""
     message = str(error)
     app.logger.warning(message)
-    return (
-        {
-            "status": status.HTTP_405_METHOD_NOT_ALLOWED,
-            "error": "Method Not Allowed",
-            "message": message,
-        },
-        status.HTTP_405_METHOD_NOT_ALLOWED,
-    )
+    return {
+        "status": status.HTTP_405_METHOD_NOT_ALLOWED,
+        "error": "Method Not Allowed",
+        "message": message,
+    }, status.HTTP_405_METHOD_NOT_ALLOWED
 
 
-@api.errorhandler(status.HTTP_409_CONFLICT)
+@api.errorhandler(Conflict)
 def conflict(error):
     """Handles 409 Conflict"""
     message = str(error)
     app.logger.warning(message)
-    return (
-        {
-            "status": status.HTTP_409_CONFLICT,
-            "error": "Conflict",
-            "message": message,
-        },
-        status.HTTP_409_CONFLICT,
-    )
+    return {
+        "status": status.HTTP_409_CONFLICT,
+        "error": "Conflict",
+        "message": message,
+    }, status.HTTP_409_CONFLICT
 
 
-@api.errorhandler(status.HTTP_415_UNSUPPORTED_MEDIA_TYPE)
+@api.errorhandler(UnsupportedMediaType)
 def mediatype_not_supported(error):
     """Handles 415 Unsupported Media Type"""
     message = str(error)
     app.logger.warning(message)
-    return (
-        {
-            "status": status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-            "error": "Unsupported media type",
-            "message": message,
-        },
-        status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-    )
+    return {
+        "status": status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+        "error": "Unsupported media type",
+        "message": message,
+    }, status.HTTP_415_UNSUPPORTED_MEDIA_TYPE
 
 
-@api.errorhandler(status.HTTP_500_INTERNAL_SERVER_ERROR)
+@api.errorhandler(InternalServerError)
 def internal_server_error(error):
     """Handles 500 Internal Server Error"""
     message = str(error)
     app.logger.error(message)
-    return (
-        {
-            "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
-            "error": "Internal Server Error",
-            "message": message,
-        },
-        status.HTTP_500_INTERNAL_SERVER_ERROR,
-    )
+    return {
+        "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
+        "error": "Internal Server Error",
+        "message": message,
+    }, status.HTTP_500_INTERNAL_SERVER_ERROR
+
