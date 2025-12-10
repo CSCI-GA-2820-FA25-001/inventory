@@ -99,7 +99,7 @@ create_model = api.model(
             required=False,
             description="Product description",
             example="Premium wireless headphones with active noise cancellation",
-        ),  # nullable=True
+        ),
     },
 )
 
@@ -177,6 +177,47 @@ inventory_args.add_argument(
 )
 
 ######################################################################
+#  H E L P E R S
+######################################################################
+def build_inventory_query(args):
+    """Build an Inventory query from parsed request arguments."""
+    q = Inventory.query
+
+    condition = args["condition"]
+    product_id = args["product_id"]
+    quantity = args["quantity"]
+    quantity_lt = args["quantity_lt"]
+    quantity_gt = args["quantity_gt"]
+    restock_level = args["restock_level"]
+    restock_lt = args["restock_lt"]
+    restock_gt = args["restock_gt"]
+    query = args["query"]
+
+    if condition:
+        # May raise KeyError if condition is invalid; caller will handle
+        q = q.filter(Inventory.condition == Condition[condition.upper()])
+
+    if product_id is not None:
+        q = q.filter(Inventory.product_id == product_id)
+    if quantity is not None:
+        q = q.filter(Inventory.quantity == quantity)
+    if quantity_lt is not None:
+        q = q.filter(Inventory.quantity < quantity_lt)
+    if quantity_gt is not None:
+        q = q.filter(Inventory.quantity > quantity_gt)
+    if restock_level is not None:
+        q = q.filter(Inventory.restock_level == restock_level)
+    if restock_lt is not None:
+        q = q.filter(Inventory.restock_level < restock_lt)
+    if restock_gt is not None:
+        q = q.filter(Inventory.restock_level > restock_gt)
+    if query:
+        q = q.filter(Inventory.description.ilike(f"%{query}%"))
+
+    return q
+
+
+######################################################################
 #  R E S T   A P I   E N D P O I N T S
 ######################################################################
 
@@ -195,7 +236,6 @@ class InventoryResource(Resource):
     GET /inventory{id} - Returns an Inventory with the id
     PUT /inventory{id} - Update an Inventory with the id
     DELETE /inventory{id} -  Deletes an Inventory with the id
-
     """
 
     # ------------------------------------------------------------------
@@ -214,7 +254,6 @@ class InventoryResource(Resource):
         """
         app.logger.info("Request to Retrieve an inventory item with id [%s]", item_id)
 
-        # Attempt to find the Inventory Item and abort if not found
         item = Inventory.find(item_id)
         if not item:
             abort(
@@ -244,7 +283,6 @@ class InventoryResource(Resource):
         """
         app.logger.info("Request to update Inventory item with id [%s]", item_id)
 
-        # Find item FIRST before validation
         item = Inventory.find(item_id)
         if not item:
             abort(
@@ -280,7 +318,6 @@ class InventoryResource(Resource):
         """
         app.logger.info("Request to Delete an inventory item with id [%s]", item_id)
 
-        # Delete the Inventory item if it exists
         item = Inventory.find(item_id)
         if item:
             app.logger.info("Inventory item with ID: %d found.", item.id)
@@ -318,47 +355,17 @@ class InventoryCollection(Resource):
         """
         app.logger.info("Request for inventory list")
 
-        # Query parameters
+        # Parse query parameters
         args = inventory_args.parse_args()
-        product_id = args["product_id"]
-        condition = args["condition"]
-        quantity = args["quantity"]
-        quantity_lt = args["quantity_lt"]
-        quantity_gt = args["quantity_gt"]
-        restock_level = args["restock_level"]
-        restock_lt = args["restock_lt"]
-        restock_gt = args["restock_gt"]
-        query = args["query"]
 
-        # Start query
-        q = Inventory.query
+        # Build query using helper, handling invalid condition values gracefully
+        try:
+            q = build_inventory_query(args)
+        except KeyError:
+            condition = args.get("condition")
+            app.logger.warning("Invalid condition: %s", condition)
+            return [], status.HTTP_200_OK
 
-        if condition:
-            try:
-                q = q.filter(Inventory.condition == Condition[condition.upper()])
-            except KeyError:
-                app.logger.warning("Invalid condition: %s", condition)
-                return [], status.HTTP_200_OK
-
-        # Apply filters dynamically
-        if product_id is not None:
-            q = q.filter(Inventory.product_id == product_id)
-        if quantity is not None:
-            q = q.filter(Inventory.quantity == quantity)
-        if quantity_lt is not None:
-            q = q.filter(Inventory.quantity < quantity_lt)
-        if quantity_gt is not None:
-            q = q.filter(Inventory.quantity > quantity_gt)
-        if restock_level is not None:
-            q = q.filter(Inventory.restock_level == restock_level)
-        if restock_lt is not None:
-            q = q.filter(Inventory.restock_level < restock_lt)
-        if restock_gt is not None:
-            q = q.filter(Inventory.restock_level > restock_gt)
-        if query:
-            q = q.filter(Inventory.description.ilike(f"%{query}%"))
-
-        # Execute final query
         items = q.all()
         results = [item.serialize() for item in items]
 
@@ -392,7 +399,6 @@ class InventoryCollection(Resource):
             data["condition"] = data["condition"].upper()
         item.deserialize(data)
 
-        # Check for duplicate product_id
         existing_item = Inventory.query.filter_by(product_id=item.product_id).first()
         if existing_item:
             app.logger.warning("Duplicate product_id [%s] found", item.product_id)
@@ -435,7 +441,6 @@ class RestockResource(Resource):
         """
         app.logger.info("Request to restock Inventory item with id [%s]", item_id)
 
-        # Find the inventory item
         item = Inventory.find(item_id)
         if not item:
             abort(
@@ -443,7 +448,6 @@ class RestockResource(Resource):
                 f"Inventory item with id '{item_id}' was not found.",
             )
 
-        # Increase quantity by restock_amount
         item.quantity += item.restock_amount
         item.update()
 
@@ -462,3 +466,4 @@ def abort(error_code: int, message: str):
     """Logs errors before aborting"""
     app.logger.error(message)
     api.abort(error_code, message)
+
