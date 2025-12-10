@@ -63,7 +63,7 @@ def index():
             "creating a sample item for the UI listing scenario."
         )
         sample_item = Inventory(
-            product_id=10101,  
+            product_id=10101,
             quantity=10,
             restock_level=5,
             restock_amount=5,
