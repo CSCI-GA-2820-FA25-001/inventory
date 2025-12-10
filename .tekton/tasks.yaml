@@ -48,8 +48,6 @@ spec:
         echo "Workspace after clone:"
         ls -R $(workspaces.source.path)
 
-
-
 ---
 apiVersion: tekton.dev/v1beta1
 kind: Task
@@ -82,16 +80,33 @@ spec:
         echo "Contents of workingDir:"
         ls -R
 
-        echo "Installing linting dependencies..."
-        pip install --upgrade pip
+        echo "Installing system deps..."
+        apt-get update -qq && apt-get install -y gcc libpq-dev
+
+        echo "Installing pipenv and project dependencies..."
+        pip install --upgrade pip pipenv
+
+        if [ ! -f Pipfile.lock ]; then
+          echo "Pipfile.lock not found – creating it with 'pipenv lock'..."
+          pipenv lock
+        fi
+
+        echo "Syncing project dependencies from Pipfile.lock into system env..."
+        if ! pipenv sync --dev --system; then
+          echo "pipenv sync failed, falling back to 'pipenv install --dev --system'..."
+          pipenv install --dev --system
+        fi
+
+        echo "Installing flake8 and pylint explicitly (just in case)..."
         pip install flake8 pylint
 
         echo "Running flake8 on entire repo..."
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
         flake8 . --count --max-complexity=10 --max-line-length=127 --statistics
 
-        echo "Running pylint on entire repo..."
-        pylint . --max-line-length=127
+        echo "Running pylint on service and tests..."
+        pylint service tests --max-line-length=127
+
 
 ---
 apiVersion: tekton.dev/v1beta1

@@ -26,9 +26,9 @@ from werkzeug.exceptions import (
     Conflict,
     InternalServerError,
 )
-from service.models import DataValidationError
-from . import status
 from service.routes import api
+from service.models import DataValidationError
+from service.common import status
 
 
 ######################################################################
