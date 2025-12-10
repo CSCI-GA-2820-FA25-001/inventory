@@ -396,6 +396,7 @@ class InventoryCollection(Resource):
     @api.response(201, "Inventory item created successfully")
     @api.response(400, "Invalid request data")
     @api.response(409, "Inventory item already exists")
+    @api.response(415, "Unsupported media type")
     @api.expect(create_model)
     @api.marshal_with(inventory_model, code=201)
     def post(self):
@@ -406,16 +407,33 @@ class InventoryCollection(Resource):
         Returns the created item with an auto-generated id.
         """
         app.logger.info("Request to create an Inventory item")
+
+        # Ensure we got JSON
+        if not request.is_json:
+            abort(
+                status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+                "Content-Type must be application/json",
+            )
+
         app.logger.debug("Payload = %s", api.payload)
-        data = api.payload
+        data = api.payload or {}
+
+        # Normalize condition for consistency with queries
+        condition_value = data.get("condition")
+        if condition_value is not None:
+            data["condition"] = str(condition_value).upper()
+
+        # Provide safe defaults for numeric fields that the UI
+        # may leave blank (or not send at all)
+        for field in ("quantity", "restock_level", "restock_amount"):
+            value = data.get(field)
+            if value in (None, ""):
+                data[field] = 0
 
         item = Inventory()
-
-        # condition upper() for consistency with query
-        if "condition" in data:
-            data["condition"] = data["condition"].upper()
         item.deserialize(data)
 
+        # Check for duplicate product_id
         existing_item = Inventory.query.filter_by(product_id=item.product_id).first()
         if existing_item:
             app.logger.warning("Duplicate product_id [%s] found", item.product_id)
