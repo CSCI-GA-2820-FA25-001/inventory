@@ -14,6 +14,7 @@ spec:
     - description: The name of the image to build and deploy
       name: image-name
       type: string
+      default: default-route-openshift-image-registry.apps.rm1.0a51.p1.openshiftapps.com/hellokittyprincess-dev/inventory:1.0
     - description: The name of the application to deploy
       name: app-name
       type: string

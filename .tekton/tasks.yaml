@@ -197,81 +197,30 @@ kind: Task
 metadata:
   name: build
 spec:
-  description: Build a container image using buildah
+  description: Trigger an OpenShift BuildConfig to build the image
   workspaces:
     - name: source
-      description: The workspace containing the source code and Dockerfile
+      description: (not used by this task, but kept for pipeline compatibility)
   params:
     - name: IMAGE
-      description: Reference of the image buildah will produce
+      description: Fully qualified image reference (must match BuildConfig output)
       type: string
-    - name: DOCKERFILE
-      description: Path to the Dockerfile to build
-      type: string
-      default: ./Dockerfile
-    - name: CONTEXT
-      description: Path to the directory to use as context
-      type: string
-      default: .
-    - name: TLSVERIFY
-      description: Verify the TLS on the registry endpoint
-      type: string
-      default: "false"
-    - name: FORMAT
-      description: The format of the built container, oci or docker
-      type: string
-      default: "oci"
   results:
     - name: IMAGE_DIGEST
-      description: Digest of the image just built
+      description: Placeholder digest (not actually computed)
   steps:
-    - name: build
-      image: quay.io/buildah/stable:latest
-      workingDir: $(workspaces.source.path)
-
-      # 🔒 SCC-friendly security context
-      securityContext:
-        runAsNonRoot: true
-        allowPrivilegeEscalation: false
-        capabilities:
-          drop: ["ALL"]
-
-      env:
-        - name: BUILDAH_ISOLATION
-          value: chroot
-        - name: STORAGE_DRIVER
-          value: vfs
-
+    - name: start-oc-build
+      image: quay.io/openshift/origin-cli:latest
       script: |
         #!/bin/bash
         set -e
 
-        echo "Running as: $(id -u):$(id -g)"
-        echo "Building image $(params.IMAGE)..."
+        echo "Starting OpenShift BuildConfig 'inventory-build'..."
+        oc start-build inventory-build --wait --follow
 
-        buildah --storage-driver=${STORAGE_DRIVER} --isolation=${BUILDAH_ISOLATION} bud \
-          --format=$(params.FORMAT) \
-          --tls-verify=$(params.TLSVERIFY) \
-          --no-cache \
-          -f $(params.DOCKERFILE) \
-          -t $(params.IMAGE) \
-          $(params.CONTEXT)
-
-        echo "Pushing image to registry..."
-        buildah --storage-driver=${STORAGE_DRIVER} --isolation=${BUILDAH_ISOLATION} push \
-          --tls-verify=$(params.TLSVERIFY) \
-          --digestfile /tmp/image-digest \
-          $(params.IMAGE) \
-          docker://$(params.IMAGE)
-
-        cat /tmp/image-digest | tee $(results.IMAGE_DIGEST.path)
-        echo "Image pushed successfully!"
-      volumeMounts:
-        - name: varlibcontainers
-          mountPath: /var/lib/containers
-  volumes:
-    - name: varlibcontainers
-      emptyDir: {}
+        echo "Build finished successfully."
+        # We’re not computing a real digest; just write a dummy value
+        echo "sha256:dummy" > "$(results.IMAGE_DIGEST.path)"
 
 
 ---
