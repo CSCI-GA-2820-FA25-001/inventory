@@ -229,7 +229,13 @@ spec:
       image: quay.io/buildah/stable:latest
       workingDir: $(workspaces.source.path)
 
-      # 🔧 IMPORTANT: remove privileged; use rootless-friendly settings instead
+      # 👇 IMPORTANT: run as root inside the container, but NOT privileged
+      securityContext:
+        runAsUser: 0
+        runAsNonRoot: false
+        allowPrivilegeEscalation: true
+
+      # 👇 Keep Buildah in a pod-friendly mode
       env:
         - name: BUILDAH_ISOLATION
           value: chroot
@@ -241,7 +247,7 @@ spec:
         set -e
 
         echo "Building image $(params.IMAGE)..."
-        buildah --storage-driver=${STORAGE_DRIVER} bud \
+        buildah --storage-driver=${STORAGE_DRIVER} --isolation=${BUILDAH_ISOLATION} bud \
           --format=$(params.FORMAT) \
           --tls-verify=$(params.TLSVERIFY) \
           --no-cache \
@@ -250,7 +256,7 @@ spec:
           $(params.CONTEXT)
 
         echo "Pushing image to registry..."
-        buildah --storage-driver=${STORAGE_DRIVER} push \
+        buildah --storage-driver=${STORAGE_DRIVER} --isolation=${BUILDAH_ISOLATION} push \
           --tls-verify=$(params.TLSVERIFY) \
           --digestfile /tmp/image-digest \
           $(params.IMAGE) \
@@ -264,6 +270,7 @@ spec:
   volumes:
     - name: varlibcontainers
       emptyDir: {}
+
 
 
 ---
