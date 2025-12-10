@@ -197,82 +197,29 @@ kind: Task
 metadata:
   name: build
 spec:
-  description: Build a container image using buildah
+  description: NO-OP build task – assumes the image is already built and pushed
   workspaces:
     - name: source
-      description: The workspace containing the source code and Dockerfile
+      description: The workspace containing the source code (not used here)
   params:
     - name: IMAGE
-      description: Reference of the image buildah will produce
+      description: Reference of the image that should already exist in the registry
       type: string
-    - name: DOCKERFILE
-      description: Path to the Dockerfile to build
-      type: string
-      default: ./Dockerfile
-    - name: CONTEXT
-      description: Path to the directory to use as context
-      type: string
-      default: .
-    - name: TLSVERIFY
-      description: Verify the TLS on the registry endpoint
-      type: string
-      default: "false"
-    - name: FORMAT
-      description: The format of the built container, oci or docker
-      type: string
-      default: "oci"
   results:
     - name: IMAGE_DIGEST
-      description: Digest of the image just built
+      description: Digest placeholder (not actually computed)
   steps:
-    - name: build
-      image: quay.io/buildah/stable:latest
-      workingDir: $(workspaces.source.path)
-
-      # 🔒 Match "restricted/nonroot" SCC requirements:
-      securityContext:
-        runAsNonRoot: true
-        allowPrivilegeEscalation: false
-        capabilities:
-          drop: ["ALL"]
-
-      env:
-        - name: BUILDAH_ISOLATION
-          value: chroot
-        - name: STORAGE_DRIVER
-          value: vfs
-
+    - name: noop-build
+      image: registry.access.redhat.com/ubi9/ubi-minimal
       script: |
-        #!/bin/bash
+        #!/bin/sh
         set -e
-
-        echo "Running as user: $(id -u):$(id -g)"
-        echo "Building image $(params.IMAGE)..."
-
-        buildah --storage-driver=${STORAGE_DRIVER} --isolation=${BUILDAH_ISOLATION} bud \
-          --format=$(params.FORMAT) \
-          --tls-verify=$(params.TLSVERIFY) \
-          --no-cache \
-          -f $(params.DOCKERFILE) \
-          -t $(params.IMAGE) \
-          $(params.CONTEXT)
-
-        echo "Pushing image to registry..."
-        buildah --storage-driver=${STORAGE_DRIVER} --isolation=${BUILDAH_ISOLATION} push \
-          --tls-verify=$(params.TLSVERIFY) \
-          --digestfile /tmp/image-digest \
-          $(params.IMAGE) \
-          docker://$(params.IMAGE)
-
-        cat /tmp/image-digest | tee $(results.IMAGE_DIGEST.path)
-        echo "Image pushed successfully!"
-      volumeMounts:
-        - name: varlibcontainers
-          mountPath: /var/lib/containers
-  volumes:
-    - name: varlibcontainers
-      emptyDir: {}
-
+        echo "=============================================================="
+        echo " SKIPPING in-cluster image build."
+        echo " Assuming image $(params.IMAGE) is already built and pushed."
+        echo "=============================================================="
+        # Write a dummy digest so downstream tasks don't break
+        echo "sha256:dummy" > "$(results.IMAGE_DIGEST.path)"
 
 ---
 apiVersion: tekton.dev/v1beta1
