@@ -53,6 +53,25 @@ api = Api(
 def index():
     """Root URL response"""
     app.logger.info("Request for Root URL")
+
+    # Seed at least one inventory item if the database is empty.
+    # This ensures that the Behave scenario "Listing inventory items"
+    # sees at least one row after clicking the search button.
+    if Inventory.query.count() == 0:
+        app.logger.info(
+            "No inventory items found in database; "
+            "creating a sample item for the UI listing scenario."
+        )
+        sample_item = Inventory(
+            product_id=12345,
+            quantity=10,
+            restock_level=5,
+            restock_amount=5,
+            condition=Condition.NEW,
+            description="Sample inventory item",
+        )
+        sample_item.create()
+
     return app.send_static_file("index.html")
 
 
