@@ -191,8 +191,6 @@ spec:
 
         echo "Tests completed successfully!"
 
-
-
 ---
 apiVersion: tekton.dev/v1beta1
 kind: Task
@@ -230,28 +228,34 @@ spec:
     - name: build
       image: quay.io/buildah/stable:latest
       workingDir: $(workspaces.source.path)
-      securityContext:
-        privileged: true
+
+      # 🔧 IMPORTANT: remove privileged; use rootless-friendly settings instead
+      env:
+        - name: BUILDAH_ISOLATION
+          value: chroot
+        - name: STORAGE_DRIVER
+          value: vfs
+
       script: |
         #!/bin/bash
         set -e
-        
+
         echo "Building image $(params.IMAGE)..."
-        buildah --storage-driver=vfs bud \
+        buildah --storage-driver=${STORAGE_DRIVER} bud \
           --format=$(params.FORMAT) \
           --tls-verify=$(params.TLSVERIFY) \
           --no-cache \
           -f $(params.DOCKERFILE) \
           -t $(params.IMAGE) \
           $(params.CONTEXT)
-        
+
         echo "Pushing image to registry..."
-        buildah --storage-driver=vfs push \
+        buildah --storage-driver=${STORAGE_DRIVER} push \
           --tls-verify=$(params.TLSVERIFY) \
           --digestfile /tmp/image-digest \
           $(params.IMAGE) \
           docker://$(params.IMAGE)
-        
+
         cat /tmp/image-digest | tee $(results.IMAGE_DIGEST.path)
         echo "Image pushed successfully!"
       volumeMounts:
@@ -260,6 +264,7 @@ spec:
   volumes:
     - name: varlibcontainers
       emptyDir: {}
+
 
 ---
 apiVersion: tekton.dev/v1beta1
