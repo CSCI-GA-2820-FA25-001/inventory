@@ -1,14 +1,16 @@
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
-  name: inventory           
+  name: inventory
   labels:
     app: inventory
 spec:
   to:
     kind: Service
-    name: inventory        
+    name: inventory
   port:
-    targetPort: 8080
+    targetPort: http        
+  wildcardPolicy: None
+
 
 
