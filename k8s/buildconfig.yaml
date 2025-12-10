@@ -1,0 +1,30 @@
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: inventory
+  namespace: hellokittyprincess-dev
+  
+---
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: inventory-build
+  namespace: hellokittyprincess-dev
+spec:
+  output:
+    to:
+      kind: DockerImage
+      name: default-route-openshift-image-registry.apps.rm1.0a51.p1.openshiftapps.com/hellokittyprincess-dev/inventory:1.0
+  source:
+    type: Git
+    git:
+      uri: https://github.com/CSCI-GA-2820-FA25-001/inventory
+      ref: bug
+    contextDir: .
+  strategy:
+    type: Docker
+    dockerStrategy:
+      dockerfilePath: Dockerfile
+  triggers:
+    - type: ConfigChange
+    - type: ImageChange

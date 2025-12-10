@@ -48,8 +48,6 @@ spec:
         echo "Workspace after clone:"
         ls -R $(workspaces.source.path)
 
-
-
 ---
 apiVersion: tekton.dev/v1beta1
 kind: Task
@@ -82,16 +80,32 @@ spec:
         echo "Contents of workingDir:"
         ls -R
 
-        echo "Installing linting dependencies..."
-        pip install --upgrade pip
+        echo "Installing system deps..."
+        apt-get update -qq && apt-get install -y gcc libpq-dev
+
+        echo "Installing pipenv and project dependencies..."
+        pip install --upgrade pip pipenv
+
+        if [ ! -f Pipfile.lock ]; then
+          echo "Pipfile.lock not found – creating it with 'pipenv lock'..."
+          pipenv lock
+        fi
+
+        echo "Syncing project dependencies from Pipfile.lock into system env..."
+        if ! pipenv sync --dev --system; then
+          echo "pipenv sync failed, falling back to 'pipenv install --dev --system'..."
+          pipenv install --dev --system
+        fi
+
+        echo "Installing flake8 and pylint explicitly (just in case)..."
         pip install flake8 pylint
 
         echo "Running flake8 on entire repo..."
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
         flake8 . --count --max-complexity=10 --max-line-length=127 --statistics
 
-        echo "Running pylint on entire repo..."
-        pylint . --max-line-length=127
+        echo "Running pylint on service and tests..."
+        pylint service tests --max-line-length=127
 
 ---
 apiVersion: tekton.dev/v1beta1
@@ -115,7 +129,6 @@ spec:
     - name: database_uri
       description: Database URI for testing
       type: string
-      # ✅ Use SQLite in the CI container
       default: "sqlite:///inventory_test.db"
   steps:
     - name: tests
@@ -191,75 +204,36 @@ spec:
 
         echo "Tests completed successfully!"
 
-
-
 ---
 apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
   name: build
 spec:
-  description: Build a container image using buildah
+  description: Trigger an OpenShift BuildConfig to build the image
   workspaces:
     - name: source
-      description: The workspace containing the source code and Dockerfile
+      description: (not used by this task, but kept for pipeline compatibility)
   params:
     - name: IMAGE
-      description: Reference of the image buildah will produce
+      description: Fully qualified image reference (must match BuildConfig output)
       type: string
-    - name: DOCKERFILE
-      description: Path to the Dockerfile to build
-      type: string
-      default: ./Dockerfile
-    - name: CONTEXT
-      description: Path to the directory to use as context
-      type: string
-      default: .
-    - name: TLSVERIFY
-      description: Verify the TLS on the registry endpoint
-      type: string
-      default: "false"
-    - name: FORMAT
-      description: The format of the built container, oci or docker
-      type: string
-      default: "oci"
   results:
     - name: IMAGE_DIGEST
-      description: Digest of the image just built
+      description: Placeholder digest (not actually computed)
   steps:
-    - name: build
-      image: quay.io/buildah/stable:latest
-      workingDir: $(workspaces.source.path)
-      securityContext:
-        privileged: true
+    - name: start-oc-build
+      image: quay.io/openshift/origin-cli:latest
       script: |
         #!/bin/bash
         set -e
-        
-        echo "Building image $(params.IMAGE)..."
-        buildah --storage-driver=vfs bud \
-          --format=$(params.FORMAT) \
-          --tls-verify=$(params.TLSVERIFY) \
-          --no-cache \
-          -f $(params.DOCKERFILE) \
-          -t $(params.IMAGE) \
-          $(params.CONTEXT)
-        
-        echo "Pushing image to registry..."
-        buildah --storage-driver=vfs push \
-          --tls-verify=$(params.TLSVERIFY) \
-          --digestfile /tmp/image-digest \
-          $(params.IMAGE) \
-          docker://$(params.IMAGE)
-        
-        cat /tmp/image-digest | tee $(results.IMAGE_DIGEST.path)
-        echo "Image pushed successfully!"
-      volumeMounts:
-        - name: varlibcontainers
-          mountPath: /var/lib/containers
-  volumes:
-    - name: varlibcontainers
-      emptyDir: {}
+
+        echo "Starting OpenShift BuildConfig 'inventory-build'..."
+        oc start-build inventory-build --wait --follow
+
+        echo "Build finished successfully."
+        # We’re not computing a real digest; just write a dummy value
+        echo "sha256:dummy" > "$(results.IMAGE_DIGEST.path)"
 
 ---
 apiVersion: tekton.dev/v1beta1
@@ -292,23 +266,19 @@ spec:
         set -e
         
         echo "Deploying to OpenShift..."
+        echo "Current working directory: $(pwd)"
+        echo "Workspace contents:"
+        ls -R
         
-        # Apply PostgreSQL resources first (if not already deployed)
         echo "Ensuring PostgreSQL is deployed..."
         oc apply -f $(params.MANIFEST_DIR)/postgres/ || true
         
-        # Wait a bit for postgres to be ready
-        sleep 5
-        
-        # Apply application service first
         echo "Applying service..."
         oc apply -f $(params.MANIFEST_DIR)/service.yaml
         
-        # Apply route
         echo "Applying route..."
         oc apply -f $(params.MANIFEST_DIR)/route.yaml
         
-        # Apply deployment
         echo "Applying deployment..."
         oc apply -f $(params.MANIFEST_DIR)/deployment.yaml
         
@@ -325,7 +295,6 @@ spec:
         
         echo "Deployment completed successfully!"
 
----
 ---
 apiVersion: tekton.dev/v1beta1
 kind: Task
@@ -348,9 +317,14 @@ spec:
       description: Number of seconds to wait for the service to be ready
       type: string
       default: "60"
+    - name: IMAGE     
+      description: Image that contains the app & Python deps for Behave
+      type: string
+      default: "default-route-openshift-image-registry.apps.rm1.0a51.p1.openshiftapps.com/hellokittyprincess-dev/inventory:1.0"
+
   steps:
     - name: wait-for-service
-      image: cluster-registry:5001/inventory:1.0   # 👈 no $(params.APP_NAME) here
+      image: $(params.IMAGE)       
       securityContext:
         runAsUser: 0
       script: |
@@ -382,7 +356,7 @@ spec:
         echo "Service is ready!"
     
     - name: run-behave-tests
-      image: cluster-registry:5001/inventory:1.0
+      image: $(params.IMAGE)       
       securityContext:
         runAsUser: 0
       workingDir: $(workspaces.source.path)

@@ -26,9 +26,9 @@ from werkzeug.exceptions import (
     Conflict,
     InternalServerError,
 )
-from service.models import DataValidationError
-from . import status
 from service.routes import api
+from service.models import DataValidationError
+from service.common import status
 
 
 ######################################################################
@@ -116,4 +116,3 @@ def internal_server_error(error):
         "error": "Internal Server Error",
         "message": message,
     }, status.HTTP_500_INTERNAL_SERVER_ERROR
-

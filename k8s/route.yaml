@@ -1,20 +1,16 @@
-apiVersion: networking.k8s.io/v1
-kind: Ingress
+apiVersion: route.openshift.io/v1
+kind: Route
 metadata:
-  name: inventory-ingress
+  name: inventory
   labels:
     app: inventory
-  annotations:
-    traefik.ingress.kubernetes.io/router.entrypoints: web
 spec:
-  rules:
-  - host: cluster-registry
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: inventory
-            port:
-              number: 8080
+  to:
+    kind: Service
+    name: inventory
+  port:
+    targetPort: http        
+  wildcardPolicy: None
+
+
+
