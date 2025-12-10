@@ -298,7 +298,6 @@ spec:
         
         echo "Deployment completed successfully!"
 
----
 apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
@@ -320,9 +319,14 @@ spec:
       description: Number of seconds to wait for the service to be ready
       type: string
       default: "60"
+    - name: IMAGE      # 👈 NEW: image param
+      description: Image that contains the app & Python deps for Behave
+      type: string
+      default: "default-route-openshift-image-registry.apps.rm1.0a51.p1.openshiftapps.com/hellokittyprincess-dev/inventory:1.0"
+
   steps:
     - name: wait-for-service
-      image: cluster-registry:5001/inventory:1.0   # 👈 no $(params.APP_NAME) here
+      image: $(params.IMAGE)       # 👈 use the param instead of cluster-registry
       securityContext:
         runAsUser: 0
       script: |
@@ -354,7 +358,7 @@ spec:
         echo "Service is ready!"
     
     - name: run-behave-tests
-      image: cluster-registry:5001/inventory:1.0
+      image: $(params.IMAGE)       # 👈 same here
       securityContext:
         runAsUser: 0
       workingDir: $(workspaces.source.path)
