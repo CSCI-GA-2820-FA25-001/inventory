@@ -229,13 +229,13 @@ spec:
       image: quay.io/buildah/stable:latest
       workingDir: $(workspaces.source.path)
 
-      # 👇 IMPORTANT: run as root inside the container, but NOT privileged
+      # 🔒 Match "restricted/nonroot" SCC requirements:
       securityContext:
-        runAsUser: 0
-        runAsNonRoot: false
-        allowPrivilegeEscalation: true
+        runAsNonRoot: true
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: ["ALL"]
 
-      # 👇 Keep Buildah in a pod-friendly mode
       env:
         - name: BUILDAH_ISOLATION
           value: chroot
@@ -246,7 +246,9 @@ spec:
         #!/bin/bash
         set -e
 
+        echo "Running as user: $(id -u):$(id -g)"
         echo "Building image $(params.IMAGE)..."
+
         buildah --storage-driver=${STORAGE_DRIVER} --isolation=${BUILDAH_ISOLATION} bud \
           --format=$(params.FORMAT) \
           --tls-verify=$(params.TLSVERIFY) \
@@ -270,7 +272,6 @@ spec:
   volumes:
     - name: varlibcontainers
       emptyDir: {}
-
 
 
 ---
