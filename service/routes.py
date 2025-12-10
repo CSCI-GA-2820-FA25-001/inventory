@@ -55,15 +55,15 @@ def index():
     app.logger.info("Request for Root URL")
 
     # Seed at least one inventory item if the database is empty.
-    # This ensures that the Behave scenario "Listing inventory items"
-    # sees at least one row after clicking the search button.
+    # Use a product_id that is never used in the Behave scenarios,
+    # so we don't collide with test data like 12345, 88888, etc.
     if Inventory.query.count() == 0:
         app.logger.info(
             "No inventory items found in database; "
             "creating a sample item for the UI listing scenario."
         )
         sample_item = Inventory(
-            product_id=12345,
+            product_id=10101,  
             quantity=10,
             restock_level=5,
             restock_amount=5,
