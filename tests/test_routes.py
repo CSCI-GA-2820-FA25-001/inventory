@@ -143,7 +143,7 @@ class TestYourResourceService(TestCase):
 
     def test_create_inventory_with_empty_restock_fields(self):
         """It should create an inventory item when restock fields are empty strings"""
-        # The UI sends empty strings when fields left blank
+        # The UI sends empty strings when fields are left blank
         test_data = {
             "product_id": 77777,
             "condition": "NEW",
